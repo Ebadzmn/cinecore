@@ -10,17 +10,104 @@ class AuthController extends GetxController {
     email: 'austin.rivera@cinecore.io',
     displayName: 'Austin Rivera',
     avatarUrl: '',
-    subscriptionTier: 'CINEMAX 4K VIP',
-    isVip: true,
+    isGuest: false,
   ).obs;
 
-  final RxBool isLoggedIn = true.obs;
+  final RxBool isLoggedIn = false.obs;
   final RxBool isLoading = false.obs;
 
-  @override
-  void onInit() {
-    super.onInit();
-    loadUserProfile();
+  Future<bool> login(String email, String password) async {
+    try {
+      isLoading.value = true;
+      final result = await _apiService.login(email: email, password: password);
+      if (result != null && result['user'] != null) {
+        final u = result['user'] as Map<String, dynamic>;
+        userProfile.value = UserProfileModel(
+          id: u['id']?.toString() ?? 'usr_1',
+          email: u['email']?.toString() ?? email,
+          displayName: u['displayName']?.toString() ??
+              u['name']?.toString() ??
+              (email.contains('@') ? email.split('@').first : 'User'),
+          avatarUrl: u['avatarUrl']?.toString() ?? '',
+          isGuest: false,
+        );
+        isLoggedIn.value = true;
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<bool> register({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    try {
+      isLoading.value = true;
+      final result = await _apiService.register(
+        name: name,
+        email: email,
+        password: password,
+      );
+      if (result != null && result['user'] != null) {
+        final u = result['user'] as Map<String, dynamic>;
+        userProfile.value = UserProfileModel(
+          id: u['id']?.toString() ?? 'usr_new',
+          email: u['email']?.toString() ?? email,
+          displayName: u['displayName']?.toString() ?? name,
+          avatarUrl: u['avatarUrl']?.toString() ?? '',
+          isGuest: false,
+        );
+        isLoggedIn.value = true;
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> loginAsGuest() async {
+    isLoading.value = true;
+    try {
+      final result = await _apiService.loginGuest();
+      if (result != null && result['user'] != null) {
+        final u = result['user'] as Map<String, dynamic>;
+        userProfile.value = UserProfileModel(
+          id: u['id']?.toString() ?? 'usr_guest',
+          email: '',
+          displayName: u['displayName']?.toString() ?? 'Guest Cinephile',
+          avatarUrl: '',
+          isGuest: true,
+        );
+      } else {
+        userProfile.value = const UserProfileModel(
+          id: 'usr_guest',
+          email: '',
+          displayName: 'Guest Cinephile',
+          avatarUrl: '',
+          isGuest: true,
+        );
+      }
+    } catch (_) {
+      userProfile.value = const UserProfileModel(
+        id: 'usr_guest',
+        email: '',
+        displayName: 'Guest Cinephile',
+        avatarUrl: '',
+        isGuest: true,
+      );
+    } finally {
+      isLoggedIn.value = true;
+      isLoading.value = false;
+    }
   }
 
   Future<void> loadUserProfile() async {
@@ -34,14 +121,14 @@ class AuthController extends GetxController {
     }
   }
 
-  void toggleVipStatus() {
-    userProfile.value = UserProfileModel(
-      id: userProfile.value.id,
-      email: userProfile.value.email,
-      displayName: userProfile.value.displayName,
-      avatarUrl: userProfile.value.avatarUrl,
-      subscriptionTier: userProfile.value.isVip ? 'STANDARD HD' : 'CINEMAX 4K VIP',
-      isVip: !userProfile.value.isVip,
+  void logout() {
+    isLoggedIn.value = false;
+    userProfile.value = const UserProfileModel(
+      id: '',
+      email: '',
+      displayName: 'Guest',
+      avatarUrl: '',
+      isGuest: true,
     );
   }
 }

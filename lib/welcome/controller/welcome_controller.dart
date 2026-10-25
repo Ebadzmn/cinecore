@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../auth/screen/get_started_screen.dart';
+import '../../auth/screen/login_screen.dart';
+
+import '../../controllers/auth_controller.dart';
 import '../../home/screen/home_screen.dart';
+import '../../theme/app_colors.dart';
 
 class WelcomeController extends ChangeNotifier {
   late ScrollController column1Controller;
@@ -16,18 +21,36 @@ class WelcomeController extends ChangeNotifier {
   }
 
   void onGetStarted(BuildContext context) {
-    Get.off(
-      () => const HomeScreen(),
-      transition: Transition.fadeIn,
-      duration: const Duration(milliseconds: 400),
+    Get.to(
+      () => const GetStartedScreen(),
+      transition: Transition.rightToLeftWithFade,
+      duration: const Duration(milliseconds: 350),
     );
   }
 
   void onSignIn(BuildContext context) {
-    Get.off(
+    Get.to(
+      () => const LoginScreen(),
+      transition: Transition.rightToLeftWithFade,
+      duration: const Duration(milliseconds: 350),
+    );
+  }
+
+  void onGuestLogin(BuildContext context) async {
+    final authController = Get.put(AuthController());
+    await authController.loginAsGuest();
+    Get.offAll(
       () => const HomeScreen(),
       transition: Transition.fadeIn,
       duration: const Duration(milliseconds: 400),
+    );
+    Get.snackbar(
+      'Guest Mode Active',
+      'Welcome to CineCore! Browsing as Guest.',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: const Color(0xFF161822),
+      colorText: AppColors.primary,
+      icon: const Icon(Icons.explore_rounded, color: AppColors.primary),
     );
   }
 

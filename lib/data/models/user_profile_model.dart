@@ -3,26 +3,26 @@ class UserProfileModel {
   final String email;
   final String displayName;
   final String avatarUrl;
-  final String subscriptionTier; // 'CINEMAX 4K VIP', 'PREMIUM', 'FREE'
-  final bool isVip;
+  final bool isGuest;
 
   const UserProfileModel({
     required this.id,
     required this.email,
     required this.displayName,
     required this.avatarUrl,
-    this.subscriptionTier = 'CINEMAX 4K VIP',
-    this.isVip = true,
+    this.isGuest = false,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
     return UserProfileModel(
-      id: json['id']?.toString() ?? '',
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
-      displayName: json['displayName']?.toString() ?? json['display_name']?.toString() ?? 'Austin Rivera',
+      displayName: json['displayName']?.toString() ??
+          json['display_name']?.toString() ??
+          json['name']?.toString() ??
+          'Cinephile',
       avatarUrl: json['avatarUrl']?.toString() ?? json['avatar_url']?.toString() ?? '',
-      subscriptionTier: json['subscriptionTier']?.toString() ?? 'CINEMAX 4K VIP',
-      isVip: json['isVip'] == true || json['subscriptionTier'] == 'CINEMAX 4K VIP',
+      isGuest: json['isGuest'] == true || json['is_guest'] == true,
     );
   }
 
@@ -32,8 +32,7 @@ class UserProfileModel {
       'email': email,
       'displayName': displayName,
       'avatarUrl': avatarUrl,
-      'subscriptionTier': subscriptionTier,
-      'isVip': isVip,
+      'isGuest': isGuest,
     };
   }
 }

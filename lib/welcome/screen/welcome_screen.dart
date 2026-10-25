@@ -72,6 +72,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               child: WelcomeBottomCard(
                 onGetStarted: () => _controller.onGetStarted(context),
                 onSignIn: () => _controller.onSignIn(context),
+                onGuestLogin: () => _controller.onGuestLogin(context),
               ),
             ),
           ],

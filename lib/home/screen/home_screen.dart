@@ -331,28 +331,25 @@ class HomeScreen extends StatelessWidget {
                           const SizedBox(height: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
+                              horizontal: 8,
+                              vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              profile.subscriptionTier,
+                              profile.isGuest ? 'GUEST' : 'MEMBER',
                               style: const TextStyle(
                                 color: Color(0xFFFBBF24),
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
                               ),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.refresh_rounded, color: Color(0xFFF59E0B)),
-                      onPressed: () => authController.toggleVipStatus(),
                     ),
                   ],
                 ),

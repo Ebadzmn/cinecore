@@ -6,11 +6,13 @@ import 'welcome_button.dart';
 class WelcomeBottomCard extends StatelessWidget {
   final VoidCallback onGetStarted;
   final VoidCallback onSignIn;
+  final VoidCallback onGuestLogin;
 
   const WelcomeBottomCard({
     super.key,
     required this.onGetStarted,
     required this.onSignIn,
+    required this.onGuestLogin,
   });
 
   @override
@@ -63,9 +65,9 @@ class WelcomeBottomCard extends StatelessWidget {
             ),
             padding: EdgeInsets.fromLTRB(
               24,
-              16,
+              14,
               24,
-              bottomPadding > 0 ? bottomPadding + 16 : 28,
+              bottomPadding > 0 ? bottomPadding + 12 : 24,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -81,7 +83,7 @@ class WelcomeBottomCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
                 // Title
                 const Text(
@@ -89,13 +91,13 @@ class WelcomeBottomCard extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 27,
+                    fontSize: 26,
                     fontWeight: FontWeight.w800,
                     height: 1.22,
                     letterSpacing: -0.4,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
 
                 // Subtitle
                 Text(
@@ -103,12 +105,12 @@ class WelcomeBottomCard extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 14,
-                    height: 1.45,
+                    fontSize: 13.5,
+                    height: 1.4,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 22),
 
                 // Primary Button: Get Started
                 WelcomeButton(
@@ -116,13 +118,58 @@ class WelcomeBottomCard extends StatelessWidget {
                   isPrimary: true,
                   onPressed: onGetStarted,
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
 
                 // Secondary Button: Sign In
                 WelcomeButton(
                   text: 'Sign In',
                   isPrimary: false,
                   onPressed: onSignIn,
+                ),
+                const SizedBox(height: 12),
+
+                // Tertiary Button: Login as Guest
+                GestureDetector(
+                  onTap: onGuestLogin,
+                  child: Container(
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF13151D).withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        width: 1.1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.explore_outlined,
+                            color: AppColors.primary,
+                            size: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Login as Guest',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),

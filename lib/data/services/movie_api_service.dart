@@ -193,7 +193,99 @@ class MovieApiService {
     return _defaultLeaderboardCatalog;
   }
 
-  // 6. User Profile
+  // 6. User Authentication & Profile
+  Future<Map<String, dynamic>?> login({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final response = await _apiClient.post(
+        ApiConstants.login,
+        data: {
+          'email': email,
+          'password': password,
+        },
+      );
+      if (response.data != null && response.data['data'] != null) {
+        final data = response.data['data'] as Map<String, dynamic>;
+        if (data['token'] != null) {
+          _apiClient.setAuthToken(data['token'].toString());
+        }
+        return data;
+      }
+    } catch (_) {
+      // Fallback
+    }
+    return {
+      'token': 'mock_jwt_token_user_austin',
+      'user': {
+        'id': 'usr_austin_1',
+        'email': email,
+        'displayName': email.contains('@') ? email.split('@').first : 'Cinephile User',
+        'isGuest': false,
+      }
+    };
+  }
+
+  Future<Map<String, dynamic>?> register({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final response = await _apiClient.post(
+        ApiConstants.register,
+        data: {
+          'name': name,
+          'email': email,
+          'password': password,
+        },
+      );
+      if (response.data != null && response.data['data'] != null) {
+        final data = response.data['data'] as Map<String, dynamic>;
+        if (data['token'] != null) {
+          _apiClient.setAuthToken(data['token'].toString());
+        }
+        return data;
+      }
+    } catch (_) {
+      // Fallback
+    }
+    return {
+      'token': 'mock_jwt_token_user_registered',
+      'user': {
+        'id': 'usr_${DateTime.now().millisecondsSinceEpoch}',
+        'email': email,
+        'displayName': name.isNotEmpty ? name : 'Cinephile',
+        'isGuest': false,
+      }
+    };
+  }
+
+  Future<Map<String, dynamic>?> loginGuest() async {
+    try {
+      final response = await _apiClient.post(ApiConstants.guestLogin);
+      if (response.data != null && response.data['data'] != null) {
+        final data = response.data['data'] as Map<String, dynamic>;
+        if (data['token'] != null) {
+          _apiClient.setAuthToken(data['token'].toString());
+        }
+        return data;
+      }
+    } catch (_) {
+      // Fallback
+    }
+    return {
+      'token': 'mock_jwt_token_guest',
+      'user': {
+        'id': 'usr_guest',
+        'email': '',
+        'displayName': 'Guest Cinephile',
+        'isGuest': true,
+      }
+    };
+  }
+
   Future<UserProfileModel> getUserProfile() async {
     try {
       final response = await _apiClient.get(ApiConstants.userProfile);
@@ -206,8 +298,7 @@ class MovieApiService {
       email: 'austin.rivera@cinecore.io',
       displayName: 'Austin Rivera',
       avatarUrl: '',
-      subscriptionTier: 'CINEMAX 4K VIP',
-      isVip: true,
+      isGuest: false,
     );
   }
 
