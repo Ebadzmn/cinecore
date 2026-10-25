@@ -111,20 +111,22 @@ class MovieModel {
 
   factory MovieModel.fromJson(Map<String, dynamic> json) {
     return MovieModel(
-      id: json['id']?.toString() ?? '',
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
-      subtitle: json['subtitle']?.toString(),
+      subtitle: json['subtitle']?.toString() ?? json['description']?.toString(),
       tagline: json['tagline']?.toString(),
-      synopsis: json['synopsis']?.toString(),
-      imageUrl: json['imageUrl']?.toString() ?? json['poster_url']?.toString() ?? '',
-      backdropUrl: json['backdropUrl']?.toString() ?? json['backdrop_url']?.toString(),
+      synopsis: json['synopsis']?.toString() ?? json['description']?.toString(),
+      imageUrl: json['imageUrl']?.toString() ?? json['poster']?.toString() ?? json['poster_url']?.toString() ?? '',
+      backdropUrl: json['backdropUrl']?.toString() ?? json['backdrop']?.toString() ?? json['backdrop_url']?.toString(),
       rating: (json['rating'] is num) ? (json['rating'] as num).toDouble() : 0.0,
       badge: json['badge']?.toString(),
       releaseYear: json['releaseYear']?.toString() ?? json['release_year']?.toString(),
       genres: (json['genres'] is List)
           ? (json['genres'] as List).join(', ')
           : (json['genres']?.toString() ?? 'Action'),
-      duration: json['duration']?.toString() ?? '2h 00m',
+      duration: (json['duration'] is num)
+          ? '${json['duration']}m'
+          : json['duration']?.toString() ?? '2h 00m',
       resolution: json['resolution']?.toString() ?? '4K Ultra HD',
       ageRating: json['ageRating']?.toString() ?? json['age_rating']?.toString(),
       studio: (json['studio'] is Map)

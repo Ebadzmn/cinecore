@@ -17,9 +17,9 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(text: 'austin.rivera@cinecore.io');
-  final _passwordController = TextEditingController(text: '••••••••');
-  final AuthController _authController = Get.put(AuthController());
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final AuthController _authController = Get.find<AuthController>();
 
   bool _isPasswordVisible = false;
   bool _rememberMe = true;
@@ -46,6 +46,17 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    if (password.isEmpty) {
+      Get.snackbar(
+        'Required Field',
+        'Please enter your password',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: const Color(0xFF1E202B),
+        colorText: Colors.white,
+      );
+      return;
+    }
+
     final success = await _authController.login(email, password);
     if (success) {
       Get.offAll(
@@ -64,7 +75,9 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       Get.snackbar(
         'Login Failed',
-        'Invalid credentials. Please try again.',
+        _authController.errorMessage.value.isNotEmpty
+            ? _authController.errorMessage.value
+            : 'Invalid credentials. Please try again.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.shade900.withValues(alpha: 0.9),
         colorText: Colors.white,

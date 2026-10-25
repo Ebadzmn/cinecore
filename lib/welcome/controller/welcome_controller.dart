@@ -37,7 +37,7 @@ class WelcomeController extends ChangeNotifier {
   }
 
   void onGuestLogin(BuildContext context) async {
-    final authController = Get.put(AuthController());
+    final authController = Get.find<AuthController>();
     await authController.loginAsGuest();
     Get.offAll(
       () => const HomeScreen(),

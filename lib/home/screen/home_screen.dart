@@ -11,13 +11,18 @@ import '../widget/custom_glass_bottom_nav_bar.dart';
 import '../widget/home_top_header.dart';
 import '../widget/peacock_picks_section.dart';
 import '../widget/spotlight_hero_card.dart';
-import '../widget/studio_provider_pills.dart';
+import '../widget/genre_movie_row_section.dart';
+import '../widget/genres_horizontal_section.dart';
 import '../widget/top_blockbusters_section.dart';
+import 'genre_movies_screen.dart';
 import 'leaderboard_screen.dart';
 import 'movie_details_screen.dart';
 import 'movie_player_screen.dart';
 import 'search_screen.dart';
 import 'watchlist_screen.dart';
+import '../../welcome/screen/welcome_screen.dart';
+import '../../auth/screen/get_started_screen.dart';
+import '../../auth/screen/login_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -26,7 +31,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final homeController = Get.put(HomeController());
     final watchlistController = Get.put(WatchlistController());
-    final authController = Get.put(AuthController());
+    final authController = Get.find<AuthController>();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(
@@ -153,24 +158,31 @@ class HomeScreen extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 22)),
 
-            // 4. Studio Provider Pills
+            // 4. Genres Capsule Section
             SliverToBoxAdapter(
-              child: StudioProviderPills(
-                onProviderSelected: (provider) {
-                  Get.snackbar(
-                    'Studio Filter',
-                    'Browsing $provider catalog',
-                    snackPosition: SnackPosition.BOTTOM,
-                    backgroundColor: const Color(0xFF161822),
-                    colorText: Colors.white,
-                    duration: const Duration(seconds: 1),
-                  );
+              child: GenresHorizontalSection(
+                onGenreSelected: (genre) {
+                  Get.to(() => GenreMoviesScreen(genreName: genre.name));
                 },
               ),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 26)),
 
-            // 5. Top 10 Blockbusters Section
+            // 5. Action Movies (10 items)
+            SliverToBoxAdapter(
+              child: GenreMovieRowSection(
+                genreName: 'Action',
+                title: 'Action Movies',
+                onMovieTap: (movie) => _navigateToDetails(
+                  title: movie.title,
+                  subtitle: movie.subtitle ?? movie.genres,
+                  heroImageUrl: movie.imageUrl,
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 26)),
+
+            // 6. Top 10 Blockbusters Section
             SliverToBoxAdapter(
               child: TopBlockbustersSection(
                 onMovieTap: (movie) => _navigateToDetails(
@@ -183,7 +195,35 @@ class HomeScreen extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 26)),
 
-            // 6. Peacock Picks Section
+            // 7. Crime Movies (10 items)
+            SliverToBoxAdapter(
+              child: GenreMovieRowSection(
+                genreName: 'Crime',
+                title: 'Crime & Mystery',
+                onMovieTap: (movie) => _navigateToDetails(
+                  title: movie.title,
+                  subtitle: movie.subtitle ?? movie.genres,
+                  heroImageUrl: movie.imageUrl,
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 26)),
+
+            // 8. Science Fiction Movies (10 items)
+            SliverToBoxAdapter(
+              child: GenreMovieRowSection(
+                genreName: 'Science Fiction',
+                title: 'Science Fiction',
+                onMovieTap: (movie) => _navigateToDetails(
+                  title: movie.title,
+                  subtitle: movie.subtitle ?? movie.genres,
+                  heroImageUrl: movie.imageUrl,
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 26)),
+
+            // 9. Peacock Picks Section
             SliverToBoxAdapter(
               child: PeacockPicksSection(
                 onMovieTap: (movie) => _navigateToDetails(
@@ -196,7 +236,21 @@ class HomeScreen extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 26)),
 
-            // 7. Continue Watching Section
+            // 10. Thriller Movies (10 items)
+            SliverToBoxAdapter(
+              child: GenreMovieRowSection(
+                genreName: 'Thriller',
+                title: 'Edge-of-Seat Thrillers',
+                onMovieTap: (movie) => _navigateToDetails(
+                  title: movie.title,
+                  subtitle: movie.subtitle ?? movie.genres,
+                  heroImageUrl: movie.imageUrl,
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 26)),
+
+            // 11. Continue Watching Section
             SliverToBoxAdapter(
               child: ContinueWatchingSection(
                 onItemTap: (item) => _navigateToPlayer(
@@ -355,6 +409,129 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
+              if (profile.isGuest) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E1A11),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.stars_rounded, color: Color(0xFFFBBF24), size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Upgrade to Full Member',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Unlock your personal watchlist, synchronized playback history, and member privileges.',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 12.5,
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFF59E0B),
+                                foregroundColor: Colors.black,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 11),
+                              ),
+                              onPressed: () {
+                                Get.to(() => const GetStartedScreen());
+                              },
+                              child: const Text(
+                                'Create Account',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 11),
+                              ),
+                              onPressed: () {
+                                Get.to(() => const LoginScreen());
+                              },
+                              child: const Text(
+                                'Sign In',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+              GestureDetector(
+                onTap: () async {
+                  await authController.logout();
+                  Get.offAll(
+                    () => const WelcomeScreen(),
+                    transition: Transition.fadeIn,
+                    duration: const Duration(milliseconds: 350),
+                  );
+                },
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161822),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.red.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.logout_rounded, color: Colors.red.shade400, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        profile.isGuest ? 'Leave Guest Mode' : 'Sign Out',
+                        style: TextStyle(
+                          color: Colors.red.shade400,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           );
         }),

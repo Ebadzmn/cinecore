@@ -20,7 +20,7 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final AuthController _authController = Get.put(AuthController());
+  final AuthController _authController = Get.find<AuthController>();
 
   bool _isPasswordVisible = false;
   bool _agreedToTerms = true;
@@ -42,6 +42,28 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
       Get.snackbar(
         'Incomplete Form',
         'Please complete all required fields.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: const Color(0xFF1E202B),
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    if (name.length < 2) {
+      Get.snackbar(
+        'Invalid Name',
+        'Name must be at least 2 characters.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: const Color(0xFF1E202B),
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      Get.snackbar(
+        'Weak Password',
+        'Password must be at least 6 characters.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: const Color(0xFF1E202B),
         colorText: Colors.white,
@@ -83,7 +105,9 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
     } else {
       Get.snackbar(
         'Registration Failed',
-        'Unable to create account. Please try again.',
+        _authController.errorMessage.value.isNotEmpty
+            ? _authController.errorMessage.value
+            : 'Unable to create account. Please try again.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.shade900.withValues(alpha: 0.9),
         colorText: Colors.white,

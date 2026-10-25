@@ -2,11 +2,73 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_constants.dart';
 import '../models/cast_member_model.dart';
 import '../models/continue_watching_model.dart';
+import '../models/genre_model.dart';
 import '../models/movie_model.dart';
 import '../models/user_profile_model.dart';
 
 class MovieApiService {
   final ApiClient _apiClient = ApiClient();
+
+  /// Fetch all available genres from backend (/api/v1/movies/genres)
+  Future<List<GenreModel>> getGenres() async {
+    try {
+      final response = await _apiClient.get(ApiConstants.genres);
+      if (response.data != null && response.data['data'] is List) {
+        return (response.data['data'] as List)
+            .map((item) => GenreModel.fromJson(item as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (_) {}
+    return defaultGenres;
+  }
+
+  /// Fetch movies by genre (`/api/v1/movies?genre=<genreName>`)
+  Future<List<MovieModel>> getMoviesByGenre(String genre, {int page = 1, int limit = 10}) async {
+    final results = <MovieModel>[];
+    final seenIds = <String>{};
+
+    try {
+      final encodedGenre = Uri.encodeComponent(genre);
+      final response = await _apiClient.get(
+        '${ApiConstants.movies}?genre=$encodedGenre&page=$page&limit=$limit',
+      );
+      if (response.data != null && response.data['data'] is List) {
+        for (final item in response.data['data'] as List) {
+          final movie = MovieModel.fromJson(item as Map<String, dynamic>);
+          if (movie.id.isNotEmpty && seenIds.add(movie.id)) {
+            results.add(movie);
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Supplement or fallback to guarantee 10 movies for this genre
+    final fallbackList = _getCuratedMoviesForGenre(genre);
+    for (final movie in fallbackList) {
+      if (results.length >= limit) break;
+      if (seenIds.add(movie.id) &&
+          !results.any((r) => r.title.toLowerCase() == movie.title.toLowerCase())) {
+        results.add(movie);
+      }
+    }
+
+    return results.take(limit).toList();
+  }
+
+  static const List<GenreModel> defaultGenres = [
+    GenreModel(name: 'Action', count: 12),
+    GenreModel(name: 'Adventure', count: 9),
+    GenreModel(name: 'Comedy', count: 15),
+    GenreModel(name: 'Crime', count: 8),
+    GenreModel(name: 'Drama', count: 14),
+    GenreModel(name: 'Fantasy', count: 7),
+    GenreModel(name: 'Horror', count: 10),
+    GenreModel(name: 'Mystery', count: 6),
+    GenreModel(name: 'Romance', count: 11),
+    GenreModel(name: 'Sci-Fi', count: 13),
+    GenreModel(name: 'Thriller', count: 16),
+    GenreModel(name: 'Animation', count: 8),
+  ];
 
   // 1. Fetch Home Feed
   Future<List<MovieModel>> getSpotlightMovies() async {
@@ -665,5 +727,468 @@ class MovieApiService {
 
   static final List<MovieModel> _defaultLeaderboardCatalog = [
     ..._defaultTopBlockbusters,
+  ];
+
+  static List<MovieModel> _getCuratedMoviesForGenre(String genre) {
+    final lower = genre.toLowerCase();
+    if (lower.contains('action')) return _defaultActionMovies;
+    if (lower.contains('crime')) return _defaultCrimeMovies;
+    if (lower.contains('sci') || lower.contains('science')) return _defaultSciFiMovies;
+    if (lower.contains('thrill')) return _defaultThrillerMovies;
+    return _allSearchCatalog
+        .where((m) => m.genres.toLowerCase().contains(lower))
+        .toList();
+  }
+
+  static final List<MovieModel> _defaultActionMovies = [
+    const MovieModel(
+      id: 'act_1',
+      title: 'JOHN WICK: CHAPTER 4',
+      subtitle: 'Baba Yaga faces his deadliest adversaries yet.',
+      imageUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=600&auto=format&fit=crop',
+      rating: 9.3,
+      releaseYear: '2023',
+      duration: '2h 49m',
+      resolution: '4K ULTRA HD',
+      genres: 'Action, Thriller, Crime',
+    ),
+    const MovieModel(
+      id: 'act_2',
+      title: 'GLADIATOR II',
+      subtitle: 'What we do in life echoes in eternity.',
+      imageUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?q=80&w=600&auto=format&fit=crop',
+      rating: 9.1,
+      releaseYear: '2024',
+      duration: '2h 28m',
+      resolution: 'DOLBY VISION',
+      genres: 'Action, Drama, Adventure',
+    ),
+    const MovieModel(
+      id: 'act_3',
+      title: 'DEAD RECKONING',
+      subtitle: 'Ethan Hunt embarks on his most perilous mission.',
+      imageUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop',
+      rating: 9.0,
+      releaseYear: '2023',
+      duration: '2h 43m',
+      resolution: '4K IMAX',
+      genres: 'Action, Adventure, Thriller',
+    ),
+    const MovieModel(
+      id: 'act_4',
+      title: 'MAD MAX: FURY ROAD',
+      subtitle: 'In a wasteland of fire and blood, survival is everything.',
+      imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop',
+      rating: 9.2,
+      releaseYear: '2015',
+      duration: '2h 00m',
+      resolution: '4K HDR',
+      genres: 'Action, Sci-Fi, Adventure',
+    ),
+    const MovieModel(
+      id: 'act_5',
+      title: 'THE DARK KNIGHT',
+      subtitle: 'When the menace known as the Joker wreaks havoc.',
+      imageUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=600&auto=format&fit=crop',
+      rating: 9.5,
+      releaseYear: '2008',
+      duration: '2h 32m',
+      resolution: '4K ULTRA HD',
+      genres: 'Action, Crime, Drama',
+    ),
+    const MovieModel(
+      id: 'act_6',
+      title: 'TOP GUN: MAVERICK',
+      subtitle: 'Feel the need... the need for speed.',
+      imageUrl: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?q=80&w=600&auto=format&fit=crop',
+      rating: 9.1,
+      releaseYear: '2022',
+      duration: '2h 10m',
+      resolution: '4K IMAX',
+      genres: 'Action, Drama',
+    ),
+    const MovieModel(
+      id: 'act_7',
+      title: 'EXTRACTION 2',
+      subtitle: 'Back from the brink of death for another black ops mission.',
+      imageUrl: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=600&auto=format&fit=crop',
+      rating: 8.8,
+      releaseYear: '2023',
+      duration: '2h 03m',
+      resolution: 'DOLBY VISION',
+      genres: 'Action, Thriller',
+    ),
+    const MovieModel(
+      id: 'act_8',
+      title: 'AVENGERS: ENDGAME',
+      subtitle: 'Whatever it takes to restore the universe.',
+      imageUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop',
+      rating: 9.4,
+      releaseYear: '2019',
+      duration: '3h 01m',
+      resolution: '4K IMAX',
+      genres: 'Action, Sci-Fi, Adventure',
+    ),
+    const MovieModel(
+      id: 'act_9',
+      title: 'THE BATMAN',
+      subtitle: 'Two years of nights have turned him into a nocturnal animal.',
+      imageUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=600&auto=format&fit=crop',
+      rating: 9.0,
+      releaseYear: '2022',
+      duration: '2h 56m',
+      resolution: '4K UHD',
+      genres: 'Action, Crime, Mystery',
+    ),
+    const MovieModel(
+      id: 'act_10',
+      title: 'CASINO ROYALE',
+      subtitle: 'The introduction of modern 007 in a high-stakes duel.',
+      imageUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=600&auto=format&fit=crop',
+      rating: 8.9,
+      releaseYear: '2006',
+      duration: '2h 24m',
+      resolution: '4K HDR',
+      genres: 'Action, Adventure, Thriller',
+    ),
+  ];
+
+  static final List<MovieModel> _defaultCrimeMovies = [
+    const MovieModel(
+      id: 'crm_1',
+      title: 'THE GODFATHER',
+      subtitle: 'An offer he cannot refuse in the Corleone dynasty.',
+      imageUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop',
+      rating: 9.6,
+      releaseYear: '1972',
+      duration: '2h 55m',
+      resolution: '4K REMASTER',
+      genres: 'Crime, Drama',
+    ),
+    const MovieModel(
+      id: 'crm_2',
+      title: 'PEAKY BLINDERS',
+      subtitle: 'By order of the Peaky Blinders in Birmingham.',
+      imageUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=600&auto=format&fit=crop',
+      rating: 9.3,
+      releaseYear: '2022',
+      duration: '55m / Ep',
+      resolution: 'DOLBY VISION',
+      genres: 'Crime, Drama, Thriller',
+    ),
+    const MovieModel(
+      id: 'crm_3',
+      title: 'PULP FICTION',
+      subtitle: 'The lives of two mob hitmen, a boxer and a pair of bandits.',
+      imageUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=600&auto=format&fit=crop',
+      rating: 9.2,
+      releaseYear: '1994',
+      duration: '2h 34m',
+      resolution: '4K UHD',
+      genres: 'Crime, Drama',
+    ),
+    const MovieModel(
+      id: 'crm_4',
+      title: 'THE DEPARTED',
+      subtitle: 'An undercover cop and a mole in the Boston police department.',
+      imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop',
+      rating: 9.1,
+      releaseYear: '2006',
+      duration: '2h 31m',
+      resolution: '4K HDR',
+      genres: 'Crime, Drama, Thriller',
+    ),
+    const MovieModel(
+      id: 'crm_5',
+      title: 'HEAT',
+      subtitle: 'A group of professional bank robbers and an LAPD detective.',
+      imageUrl: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?q=80&w=600&auto=format&fit=crop',
+      rating: 9.0,
+      releaseYear: '1995',
+      duration: '2h 50m',
+      resolution: '4K UHD',
+      genres: 'Crime, Action, Drama',
+    ),
+    const MovieModel(
+      id: 'crm_6',
+      title: 'SICARIO',
+      subtitle: 'An idealistic FBI agent is enlisted by a government task force.',
+      imageUrl: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=600&auto=format&fit=crop',
+      rating: 8.9,
+      releaseYear: '2015',
+      duration: '2h 01m',
+      resolution: '4K HDR',
+      genres: 'Crime, Action, Drama',
+    ),
+    const MovieModel(
+      id: 'crm_7',
+      title: 'JOKER',
+      subtitle: 'A failed comedian is driven to insanity in Gotham City.',
+      imageUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?q=80&w=600&auto=format&fit=crop',
+      rating: 8.9,
+      releaseYear: '2019',
+      duration: '2h 02m',
+      resolution: '4K IMAX',
+      genres: 'Crime, Drama, Thriller',
+    ),
+    const MovieModel(
+      id: 'crm_8',
+      title: 'KNIVES OUT: GLASS ONION',
+      subtitle: 'Benoit Blanc peels back the layers of another mystery.',
+      imageUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=600&auto=format&fit=crop',
+      rating: 8.8,
+      releaseYear: '2022',
+      duration: '2h 19m',
+      resolution: 'DOLBY VISION',
+      genres: 'Crime, Comedy, Mystery',
+    ),
+    const MovieModel(
+      id: 'crm_9',
+      title: 'SCARFACE',
+      subtitle: 'Tony Montana carves out a brutal cocaine empire in Miami.',
+      imageUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop',
+      rating: 9.0,
+      releaseYear: '1983',
+      duration: '2h 50m',
+      resolution: '4K UHD',
+      genres: 'Crime, Drama',
+    ),
+    const MovieModel(
+      id: 'crm_10',
+      title: 'AMERICAN GANGSTER',
+      subtitle: 'Frank Lucas smashes the Harlem drug underworld.',
+      imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop',
+      rating: 8.8,
+      releaseYear: '2007',
+      duration: '2h 37m',
+      resolution: '4K HDR',
+      genres: 'Crime, Biography, Drama',
+    ),
+  ];
+
+  static final List<MovieModel> _defaultSciFiMovies = [
+    const MovieModel(
+      id: 'sci_1',
+      title: 'DUNE: PART TWO',
+      subtitle: 'Paul Atreides unites with Chani and the Fremen.',
+      imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop',
+      rating: 9.4,
+      releaseYear: '2024',
+      duration: '2h 46m',
+      resolution: 'DOLBY VISION',
+      genres: 'Science Fiction, Adventure',
+    ),
+    const MovieModel(
+      id: 'sci_2',
+      title: 'INTERSTELLAR',
+      subtitle: 'A team of explorers travel through a wormhole in space.',
+      imageUrl: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=600&auto=format&fit=crop',
+      rating: 9.5,
+      releaseYear: '2014',
+      duration: '2h 49m',
+      resolution: '4K IMAX',
+      genres: 'Science Fiction, Drama, Adventure',
+    ),
+    const MovieModel(
+      id: 'sci_3',
+      title: 'BLADE RUNNER 2049',
+      subtitle: 'A young blade runner unearths a long-buried secret.',
+      imageUrl: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?q=80&w=600&auto=format&fit=crop',
+      rating: 9.2,
+      releaseYear: '2017',
+      duration: '2h 44m',
+      resolution: '4K UHD',
+      genres: 'Science Fiction, Mystery, Action',
+    ),
+    const MovieModel(
+      id: 'sci_4',
+      title: 'INCEPTION',
+      subtitle: 'A thief steals corporate secrets through dream-sharing tech.',
+      imageUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=600&auto=format&fit=crop',
+      rating: 9.4,
+      releaseYear: '2010',
+      duration: '2h 28m',
+      resolution: '4K IMAX',
+      genres: 'Science Fiction, Action, Adventure',
+    ),
+    const MovieModel(
+      id: 'sci_5',
+      title: 'CYBERPUNK 2099',
+      subtitle: 'Neon rebellion in the high-tech shadows of dystopia.',
+      imageUrl: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?q=80&w=600&auto=format&fit=crop',
+      rating: 9.0,
+      releaseYear: '2024',
+      duration: '2h 15m',
+      resolution: '4K UHD',
+      genres: 'Science Fiction, Cyberpunk, Action',
+    ),
+    const MovieModel(
+      id: 'sci_6',
+      title: 'THE CREATOR',
+      subtitle: 'A future war between the human race and artificial intelligence.',
+      imageUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop',
+      rating: 8.8,
+      releaseYear: '2023',
+      duration: '2h 13m',
+      resolution: 'DOLBY VISION',
+      genres: 'Science Fiction, Action, Adventure',
+    ),
+    const MovieModel(
+      id: 'sci_7',
+      title: 'TENET',
+      subtitle: 'Armed with only one word—Tenet—journeying through time.',
+      imageUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=600&auto=format&fit=crop',
+      rating: 8.8,
+      releaseYear: '2020',
+      duration: '2h 30m',
+      resolution: '4K IMAX',
+      genres: 'Science Fiction, Action, Thriller',
+    ),
+    const MovieModel(
+      id: 'sci_8',
+      title: 'ARRIVAL',
+      subtitle: 'A linguist works to communicate with mysterious alien spacecraft.',
+      imageUrl: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=600&auto=format&fit=crop',
+      rating: 9.1,
+      releaseYear: '2016',
+      duration: '1h 56m',
+      resolution: '4K HDR',
+      genres: 'Science Fiction, Drama, Mystery',
+    ),
+    const MovieModel(
+      id: 'sci_9',
+      title: 'ALIEN: ROMULUS',
+      subtitle: 'Scavenging a derelict space station comes face to face with terror.',
+      imageUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?q=80&w=600&auto=format&fit=crop',
+      rating: 8.9,
+      releaseYear: '2024',
+      duration: '1h 59m',
+      resolution: '4K IMAX',
+      genres: 'Science Fiction, Horror',
+    ),
+    const MovieModel(
+      id: 'sci_10',
+      title: 'THE MATRIX RESURRECTIONS',
+      subtitle: 'Return to a world of two realities with Neo.',
+      imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop',
+      rating: 8.6,
+      releaseYear: '2021',
+      duration: '2h 28m',
+      resolution: 'DOLBY VISION',
+      genres: 'Science Fiction, Action',
+    ),
+  ];
+
+  static final List<MovieModel> _defaultThrillerMovies = [
+    const MovieModel(
+      id: 'thr_1',
+      title: 'SCREAM VII',
+      subtitle: 'The Bloodline Returns to Woodsboro with unfinished business.',
+      imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop',
+      rating: 9.3,
+      releaseYear: '2025',
+      duration: '2h 14m',
+      resolution: '4K ULTRA HD',
+      genres: 'Thriller, Horror, Mystery',
+    ),
+    const MovieModel(
+      id: 'thr_2',
+      title: 'OPPENHEIMER',
+      subtitle: 'The race to build the atomic bomb and its chilling aftermath.',
+      imageUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop',
+      rating: 9.3,
+      releaseYear: '2023',
+      duration: '3h 00m',
+      resolution: '4K IMAX',
+      genres: 'Thriller, Biography, Drama',
+    ),
+    const MovieModel(
+      id: 'thr_3',
+      title: 'SHUTTER ISLAND',
+      subtitle: 'A U.S. Marshal investigates the disappearance of a patient.',
+      imageUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=600&auto=format&fit=crop',
+      rating: 9.1,
+      releaseYear: '2010',
+      duration: '2h 18m',
+      resolution: '4K UHD',
+      genres: 'Thriller, Mystery',
+    ),
+    const MovieModel(
+      id: 'thr_4',
+      title: 'GONE GIRL',
+      subtitle: 'With his wife disappearance having become the focus of a media circus.',
+      imageUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=600&auto=format&fit=crop',
+      rating: 9.0,
+      releaseYear: '2014',
+      duration: '2h 29m',
+      resolution: '4K HDR',
+      genres: 'Thriller, Mystery, Drama',
+    ),
+    const MovieModel(
+      id: 'thr_5',
+      title: 'SE7EN',
+      subtitle: 'Two detectives hunt a serial killer who uses the seven deadly sins.',
+      imageUrl: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?q=80&w=600&auto=format&fit=crop',
+      rating: 9.4,
+      releaseYear: '1995',
+      duration: '2h 07m',
+      resolution: '4K REMASTER',
+      genres: 'Thriller, Crime, Drama',
+    ),
+    const MovieModel(
+      id: 'thr_6',
+      title: 'PRISONERS',
+      subtitle: 'When his daughter and her friend go missing, a desperate father takes charge.',
+      imageUrl: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=600&auto=format&fit=crop',
+      rating: 9.1,
+      releaseYear: '2013',
+      duration: '2h 33m',
+      resolution: '4K UHD',
+      genres: 'Thriller, Crime, Drama',
+    ),
+    const MovieModel(
+      id: 'thr_7',
+      title: 'A QUIET PLACE: DAY ONE',
+      subtitle: 'Experience the day the world went quiet in New York City.',
+      imageUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?q=80&w=600&auto=format&fit=crop',
+      rating: 8.9,
+      releaseYear: '2024',
+      duration: '1h 39m',
+      resolution: 'DOLBY VISION',
+      genres: 'Thriller, Horror, Sci-Fi',
+    ),
+    const MovieModel(
+      id: 'thr_8',
+      title: 'ZODIAC',
+      subtitle: 'A political cartoonist becomes obsessed with tracking down the killer.',
+      imageUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop',
+      rating: 8.9,
+      releaseYear: '2007',
+      duration: '2h 37m',
+      resolution: '4K HDR',
+      genres: 'Thriller, Crime, Drama',
+    ),
+    const MovieModel(
+      id: 'thr_9',
+      title: 'NIGHTCRAWLER',
+      subtitle: 'A driven young man stumbles upon the underground world of freelance crime.',
+      imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop',
+      rating: 8.9,
+      releaseYear: '2014',
+      duration: '1h 57m',
+      resolution: '4K UHD',
+      genres: 'Thriller, Crime, Drama',
+    ),
+    const MovieModel(
+      id: 'thr_10',
+      title: 'PARASITE',
+      subtitle: 'Greed and class discrimination threaten a newly formed symbiotic relationship.',
+      imageUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=600&auto=format&fit=crop',
+      rating: 9.3,
+      releaseYear: '2019',
+      duration: '2h 12m',
+      resolution: '4K UHD',
+      genres: 'Thriller, Drama',
+    ),
   ];
 }

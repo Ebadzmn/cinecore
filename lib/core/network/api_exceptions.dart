@@ -32,6 +32,24 @@ class ServerException extends AppException {
   });
 }
 
+class BadRequestException extends AppException {
+  const BadRequestException({
+    required super.message,
+    super.statusCode = 400,
+    super.code = 'BAD_REQUEST',
+    super.details,
+  });
+}
+
+class ForbiddenException extends AppException {
+  const ForbiddenException({
+    super.message = 'Access forbidden.',
+    super.statusCode = 403,
+    super.code = 'FORBIDDEN',
+    super.details,
+  });
+}
+
 class UnauthorizedException extends AppException {
   const UnauthorizedException({
     super.message = 'Your session has expired. Please login again.',
