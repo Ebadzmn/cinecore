@@ -9,10 +9,12 @@ import 'movie_player_screen.dart';
 
 class GenreMoviesScreen extends StatefulWidget {
   final String genreName;
+  final GenreModel? genre;
 
   const GenreMoviesScreen({
     super.key,
     required this.genreName,
+    this.genre,
   });
 
   @override
@@ -57,7 +59,7 @@ class _GenreMoviesScreenState extends State<GenreMoviesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final genreModel = GenreModel(name: widget.genreName);
+    final genreModel = widget.genre ?? GenreModel(name: widget.genreName);
     final gradient = genreModel.gradientColors;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(

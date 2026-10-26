@@ -1,6 +1,7 @@
 import '../../core/network/api_client.dart';
 import '../../core/network/api_constants.dart';
 import '../models/cast_member_model.dart';
+import '../models/category_model.dart';
 import '../models/continue_watching_model.dart';
 import '../models/genre_model.dart';
 import '../models/movie_model.dart';
@@ -8,6 +9,24 @@ import '../models/user_profile_model.dart';
 
 class MovieApiService {
   final ApiClient _apiClient = ApiClient();
+
+  /// Fetch all active categories from backend (/api/v1/categories)
+  Future<List<CategoryModel>> getCategories() async {
+    try {
+      final response = await _apiClient.get(ApiConstants.categories);
+      if (response.data != null && response.data['data'] is List) {
+        final list = (response.data['data'] as List)
+            .map((item) => CategoryModel.fromJson(item as Map<String, dynamic>))
+            .where((c) => c.isActive)
+            .toList();
+        if (list.isNotEmpty) {
+          list.sort((a, b) => a.order.compareTo(b.order));
+          return list;
+        }
+      }
+    } catch (_) {}
+    return CategoryModel.defaultCategories;
+  }
 
   /// Fetch all available genres from backend (/api/v1/movies/genres)
   Future<List<GenreModel>> getGenres() async {
@@ -49,6 +68,39 @@ class MovieApiService {
       if (seenIds.add(movie.id) &&
           !results.any((r) => r.title.toLowerCase() == movie.title.toLowerCase())) {
         results.add(movie);
+      }
+    }
+
+    return results.take(limit).toList();
+  }
+
+  /// Fetch latest released or added movies (`/api/v1/movies?sortBy=createdAt&sortOrder=desc&limit=<limit>`)
+  Future<List<MovieModel>> getLatestMovies({int page = 1, int limit = 10}) async {
+    final results = <MovieModel>[];
+    final seenIds = <String>{};
+
+    try {
+      final response = await _apiClient.get(
+        '${ApiConstants.movies}?sortBy=createdAt&sortOrder=desc&page=$page&limit=$limit',
+      );
+      if (response.data != null && response.data['data'] is List) {
+        for (final item in response.data['data'] as List) {
+          final movie = MovieModel.fromJson(item as Map<String, dynamic>);
+          if (movie.id.isNotEmpty && seenIds.add(movie.id)) {
+            results.add(movie);
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Supplement with curated catalog movies if needed
+    if (results.length < limit) {
+      for (final movie in _allSearchCatalog) {
+        if (results.length >= limit) break;
+        if (seenIds.add(movie.id) &&
+            !results.any((r) => r.title.toLowerCase() == movie.title.toLowerCase())) {
+          results.add(movie);
+        }
       }
     }
 

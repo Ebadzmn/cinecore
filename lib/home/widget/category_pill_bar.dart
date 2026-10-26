@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../data/models/category_model.dart';
 
 class CategoryItem {
   final String title;
@@ -10,14 +11,16 @@ class CategoryItem {
 class CategoryPillBar extends StatefulWidget {
   final int selectedIndex;
   final ValueChanged<int> onCategorySelected;
+  final List<CategoryModel>? categories;
 
   const CategoryPillBar({
     super.key,
     required this.selectedIndex,
     required this.onCategorySelected,
+    this.categories,
   });
 
-  static const List<CategoryItem> categories = [
+  static const List<CategoryItem> defaultStaticCategories = [
     CategoryItem(title: 'Movies', icon: Icons.local_activity_rounded),
     CategoryItem(title: 'Sports', icon: Icons.sports_soccer_rounded),
     CategoryItem(title: 'TV Shows', icon: Icons.tv_rounded),
@@ -33,10 +36,30 @@ class _CategoryPillBarState extends State<CategoryPillBar> {
   final ScrollController _scrollController = ScrollController();
   final Map<int, GlobalKey> _itemKeys = {};
 
+  int get _itemCount {
+    if (widget.categories != null && widget.categories!.isNotEmpty) {
+      return widget.categories!.length;
+    }
+    return CategoryPillBar.defaultStaticCategories.length;
+  }
+
   @override
   void initState() {
     super.initState();
-    for (int i = 0; i < CategoryPillBar.categories.length; i++) {
+    _rebuildKeys();
+  }
+
+  @override
+  void didUpdateWidget(covariant CategoryPillBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.categories?.length != widget.categories?.length) {
+      _rebuildKeys();
+    }
+  }
+
+  void _rebuildKeys() {
+    _itemKeys.clear();
+    for (int i = 0; i < _itemCount; i++) {
       _itemKeys[i] = GlobalKey();
     }
   }
@@ -61,6 +84,9 @@ class _CategoryPillBarState extends State<CategoryPillBar> {
 
   @override
   Widget build(BuildContext context) {
+    final hasDynamic = widget.categories != null && widget.categories!.isNotEmpty;
+    final count = _itemCount;
+
     return SizedBox(
       height: 44,
       child: ListView.separated(
@@ -68,14 +94,32 @@ class _CategoryPillBarState extends State<CategoryPillBar> {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        itemCount: CategoryPillBar.categories.length,
+        itemCount: count,
         separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
-          final item = CategoryPillBar.categories[index];
+          final String title;
+          final IconData icon;
+
+          if (hasDynamic && index < widget.categories!.length) {
+            final cat = widget.categories![index];
+            title = cat.name;
+            icon = cat.iconData;
+          } else if (index < CategoryPillBar.defaultStaticCategories.length) {
+            final item = CategoryPillBar.defaultStaticCategories[index];
+            title = item.title;
+            icon = item.icon;
+          } else {
+            title = 'Category';
+            icon = Icons.category_rounded;
+          }
+
           final isSelected = index == widget.selectedIndex;
 
+          // Ensure key exists
+          final key = _itemKeys.putIfAbsent(index, () => GlobalKey());
+
           return KeyedSubtree(
-            key: _itemKeys[index],
+            key: key,
             child: GestureDetector(
               onTap: () {
                 widget.onCategorySelected(index);
@@ -133,7 +177,7 @@ class _CategoryPillBarState extends State<CategoryPillBar> {
                       duration: const Duration(milliseconds: 260),
                       curve: Curves.easeOutBack,
                       child: Icon(
-                        item.icon,
+                        icon,
                         size: 17,
                         color: isSelected
                             ? const Color(0xFF0C0D11)
@@ -155,7 +199,7 @@ class _CategoryPillBarState extends State<CategoryPillBar> {
                             isSelected ? FontWeight.w800 : FontWeight.w500,
                         letterSpacing: isSelected ? 0.2 : 0.0,
                       ),
-                      child: Text(item.title),
+                      child: Text(title),
                     ),
                   ],
                 ),

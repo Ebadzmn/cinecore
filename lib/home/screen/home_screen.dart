@@ -14,6 +14,7 @@ import '../widget/spotlight_hero_card.dart';
 import '../widget/genre_movie_row_section.dart';
 import '../widget/genres_horizontal_section.dart';
 import '../widget/top_blockbusters_section.dart';
+import '../widget/latest_movies_section.dart';
 import 'genre_movies_screen.dart';
 import 'leaderboard_screen.dart';
 import 'movie_details_screen.dart';
@@ -121,8 +122,15 @@ class HomeScreen extends StatelessWidget {
             SliverToBoxAdapter(
               child: Obx(
                 () => CategoryPillBar(
+                  categories: homeController.categories.toList(),
                   selectedIndex: homeController.selectedCategoryIndex.value,
-                  onCategorySelected: (index) => homeController.changeCategory(index),
+                  onCategorySelected: (index) {
+                    homeController.changeCategory(index);
+                    if (index > 0 && index < homeController.categories.length) {
+                      final selectedCategory = homeController.categories[index];
+                      Get.to(() => GenreMoviesScreen(genreName: selectedCategory.name));
+                    }
+                  },
                 ),
               ),
             ),
@@ -168,7 +176,33 @@ class HomeScreen extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 26)),
 
-            // 5. Action Movies (10 items)
+            // 5. Top 10 Blockbusters Section
+            SliverToBoxAdapter(
+              child: TopBlockbustersSection(
+                onMovieTap: (movie) => _navigateToDetails(
+                  title: movie.title,
+                  subtitle: movie.genres,
+                  heroImageUrl: movie.imageUrl,
+                ),
+                onSeeLeaderboard: () => Get.to(() => const LeaderboardScreen()),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 26)),
+
+            // 6. Latest Movies (10 items, 2-column vertical grid)
+            SliverToBoxAdapter(
+              child: LatestMoviesSection(
+                onMovieTap: (movie) => _navigateToDetails(
+                  title: movie.title,
+                  subtitle: movie.subtitle ?? movie.genres,
+                  heroImageUrl: movie.imageUrl,
+                ),
+                onSeeAll: () => homeController.changeNavIndex(1),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 26)),
+
+            // 7. Action Movies (10 items)
             SliverToBoxAdapter(
               child: GenreMovieRowSection(
                 genreName: 'Action',
@@ -182,20 +216,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 26)),
 
-            // 6. Top 10 Blockbusters Section
-            SliverToBoxAdapter(
-              child: TopBlockbustersSection(
-                onMovieTap: (movie) => _navigateToDetails(
-                  title: movie.title,
-                  subtitle: movie.genres,
-                  heroImageUrl: movie.imageUrl,
-                ),
-                onSeeLeaderboard: () => Get.to(() => const LeaderboardScreen()),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 26)),
-
-            // 7. Crime Movies (10 items)
+            // 8. Crime Movies (10 items)
             SliverToBoxAdapter(
               child: GenreMovieRowSection(
                 genreName: 'Crime',
@@ -209,7 +230,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 26)),
 
-            // 8. Science Fiction Movies (10 items)
+            // 9. Science Fiction Movies (10 items)
             SliverToBoxAdapter(
               child: GenreMovieRowSection(
                 genreName: 'Science Fiction',
@@ -223,7 +244,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 26)),
 
-            // 9. Peacock Picks Section
+            // 10. Peacock Picks Section
             SliverToBoxAdapter(
               child: PeacockPicksSection(
                 onMovieTap: (movie) => _navigateToDetails(
@@ -236,7 +257,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 26)),
 
-            // 10. Thriller Movies (10 items)
+            // 11. Thriller Movies (10 items)
             SliverToBoxAdapter(
               child: GenreMovieRowSection(
                 genreName: 'Thriller',
@@ -250,7 +271,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 26)),
 
-            // 11. Continue Watching Section
+            // 12. Continue Watching Section
             SliverToBoxAdapter(
               child: ContinueWatchingSection(
                 onItemTap: (item) => _navigateToPlayer(

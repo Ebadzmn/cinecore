@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../controllers/home_controller.dart';
 import '../../data/models/genre_model.dart';
 import '../../data/services/movie_api_service.dart';
 import '../screen/genre_movies_screen.dart';
@@ -19,6 +20,14 @@ class GenresHorizontalSection extends StatefulWidget {
 class _GenresHorizontalSectionState extends State<GenresHorizontalSection> {
   final MovieApiService _movieApiService = MovieApiService();
   List<GenreModel> _genres = MovieApiService.defaultGenres;
+
+  List<GenreModel> get _activeGenres {
+    if (Get.isRegistered<HomeController>()) {
+      final hc = Get.find<HomeController>();
+      if (hc.genres.isNotEmpty) return hc.genres;
+    }
+    return _genres;
+  }
 
   @override
   void initState() {
@@ -41,7 +50,7 @@ class _GenresHorizontalSectionState extends State<GenresHorizontalSection> {
     if (widget.onGenreSelected != null) {
       widget.onGenreSelected!(genre);
     } else {
-      Get.to(() => GenreMoviesScreen(genreName: genre.name));
+      Get.to(() => GenreMoviesScreen(genreName: genre.name, genre: genre));
     }
   }
 
@@ -103,7 +112,7 @@ class _GenresHorizontalSectionState extends State<GenresHorizontalSection> {
                     child: Wrap(
                       spacing: 10,
                       runSpacing: 10,
-                      children: _genres.map((genre) {
+                      children: _activeGenres.map((genre) {
                         final gradient = genre.gradientColors;
                         return InkWell(
                           onTap: () {
@@ -206,74 +215,80 @@ class _GenresHorizontalSectionState extends State<GenresHorizontalSection> {
         // Horizontal Sleek Genre Pills
         SizedBox(
           height: 42,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: _genres.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final genre = _genres[index];
-              final gradient = genre.gradientColors;
-
-              return Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => _navigateToGenre(genre),
-                  borderRadius: BorderRadius.circular(100),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF141622),
-                      borderRadius: BorderRadius.circular(100),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Soft Icon Container
-                        Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            color: gradient.first.withValues(alpha: 0.14),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Icon(
-                              genre.icon,
-                              size: 12,
-                              color: gradient.first,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-
-                        // Genre Name
-                        Text(
-                          genre.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
+          child: Get.isRegistered<HomeController>()
+              ? Obx(() => _buildGenreListView(_activeGenres))
+              : _buildGenreListView(_activeGenres),
         ),
       ],
+    );
+  }
+
+  Widget _buildGenreListView(List<GenreModel> list) {
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      itemCount: list.length,
+      separatorBuilder: (context, index) => const SizedBox(width: 8),
+      itemBuilder: (context, index) {
+        final genre = list[index];
+        final gradient = genre.gradientColors;
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _navigateToGenre(genre),
+            borderRadius: BorderRadius.circular(100),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 9,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFF141622),
+                borderRadius: BorderRadius.circular(100),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Soft Icon Container
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: gradient.first.withValues(alpha: 0.14),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Icon(
+                        genre.icon,
+                        size: 12,
+                        color: gradient.first,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Genre Name
+                  Text(
+                    genre.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
