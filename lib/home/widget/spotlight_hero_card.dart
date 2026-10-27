@@ -323,25 +323,29 @@ class _SpotlightHeroCardState extends State<SpotlightHeroCard> {
                     const SizedBox(width: 8),
 
                     // Spotlight Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: item.badgeBgColor,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: item.badgeBorderColor,
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
                         ),
-                      ),
-                      child: Text(
-                        item.badgeText,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.6,
+                        decoration: BoxDecoration(
+                          color: item.badgeBgColor,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: item.badgeBorderColor,
+                          ),
+                        ),
+                        child: Text(
+                          item.badgeText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.6,
+                          ),
                         ),
                       ),
                     ),
@@ -358,28 +362,32 @@ class _SpotlightHeroCardState extends State<SpotlightHeroCard> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Title with colored accent
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          item.titlePrefix,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.5,
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: item.titlePrefix,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.5,
+                            ),
                           ),
-                        ),
-                        Text(
-                          item.titleHighlight,
-                          style: const TextStyle(
-                            color: Color(0xFFF97316),
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.5,
+                          TextSpan(
+                            text: item.titleHighlight,
+                            style: const TextStyle(
+                              color: Color(0xFFF97316),
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.5,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
 

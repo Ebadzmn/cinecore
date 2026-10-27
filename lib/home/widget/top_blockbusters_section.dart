@@ -29,11 +29,17 @@ class TopBlockbusterMovie {
 class TopBlockbustersSection extends StatelessWidget {
   final ValueChanged<TopBlockbusterMovie>? onMovieTap;
   final VoidCallback? onSeeLeaderboard;
+  final List<TopBlockbusterMovie>? movies;
+  final String? title;
+  final String? subtitle;
 
   const TopBlockbustersSection({
     super.key,
     this.onMovieTap,
     this.onSeeLeaderboard,
+    this.movies,
+    this.title,
+    this.subtitle,
   });
 
   static const List<TopBlockbusterMovie> top10Movies = [
@@ -203,10 +209,10 @@ class TopBlockbustersSection extends StatelessWidget {
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        'TOP 10 BLOCKBUSTERS',
-                        style: TextStyle(
+                        (title ?? 'TOP 10 BLOCKBUSTERS').toUpperCase(),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16.5,
                           fontWeight: FontWeight.w900,
@@ -215,8 +221,8 @@ class TopBlockbustersSection extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'TODAY',
-                        style: TextStyle(
+                        (subtitle ?? 'TODAY').toUpperCase(),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16.5,
                           fontWeight: FontWeight.w900,
@@ -276,19 +282,24 @@ class TopBlockbustersSection extends StatelessWidget {
         const SizedBox(height: 18),
 
         // Horizontal Ranked Cards Scroll List
-        SizedBox(
-          height: 255,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: top10Movies.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final item = top10Movies[index];
-              return _buildRankedCard(context, item, index);
-            },
-          ),
+        Builder(
+          builder: (context) {
+            final displayList = (movies != null && movies!.isNotEmpty) ? movies! : top10Movies;
+            return SizedBox(
+              height: 255,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: displayList.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final item = displayList[index];
+                  return _buildRankedCard(context, item, index);
+                },
+              ),
+            );
+          },
         ),
       ],
     );

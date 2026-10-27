@@ -4,13 +4,14 @@ import '../../data/models/genre_model.dart';
 import '../../data/models/movie_model.dart';
 import '../../data/services/movie_api_service.dart';
 import '../screen/genre_movies_screen.dart';
-import '../screen/movie_details_screen.dart';
 import '../screen/movie_player_screen.dart';
+import '../../core/utils/navigation_utils.dart';
 
 class GenreMovieRowSection extends StatefulWidget {
   final String genreName;
   final String? title;
   final String? subtitle;
+  final List<MovieModel>? movies;
   final ValueChanged<MovieModel>? onMovieTap;
 
   const GenreMovieRowSection({
@@ -18,6 +19,7 @@ class GenreMovieRowSection extends StatefulWidget {
     required this.genreName,
     this.title,
     this.subtitle,
+    this.movies,
     this.onMovieTap,
   });
 
@@ -33,7 +35,23 @@ class _GenreMovieRowSectionState extends State<GenreMovieRowSection> {
   @override
   void initState() {
     super.initState();
-    _fetchMovies();
+    if (widget.movies != null && widget.movies!.isNotEmpty) {
+      _movies = widget.movies!;
+      _isLoading = false;
+    } else {
+      _fetchMovies();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant GenreMovieRowSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.movies != null) {
+      setState(() {
+        _movies = widget.movies!;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _fetchMovies() async {
@@ -56,14 +74,7 @@ class _GenreMovieRowSectionState extends State<GenreMovieRowSection> {
     if (widget.onMovieTap != null) {
       widget.onMovieTap!(movie);
     } else {
-      Get.to(
-        () => MovieDetailsScreen(
-          title: movie.title,
-          subtitle: movie.subtitle ?? movie.genres,
-          heroImageUrl: movie.imageUrl,
-        ),
-        transition: Transition.fadeIn,
-      );
+      navigateToMediaDetails(media: movie);
     }
   }
 

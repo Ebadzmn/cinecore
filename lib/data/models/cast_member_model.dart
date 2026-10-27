@@ -13,7 +13,10 @@ class CastMemberModel {
     return CastMemberModel(
       name: json['name']?.toString() ?? '',
       character: json['character']?.toString() ?? '',
-      imageUrl: json['imageUrl']?.toString() ?? '',
+      imageUrl: json['imageUrl']?.toString() ??
+          json['image']?.toString() ??
+          json['profile_path']?.toString() ??
+          '',
     );
   }
 

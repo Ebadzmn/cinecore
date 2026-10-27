@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import '../../data/models/genre_model.dart';
 import '../../data/models/movie_model.dart';
 import '../../data/services/movie_api_service.dart';
-import 'movie_details_screen.dart';
+import '../../core/utils/navigation_utils.dart';
 import 'movie_player_screen.dart';
 
 class GenreMoviesScreen extends StatefulWidget {
@@ -386,13 +386,7 @@ class _GenreMoviesScreenState extends State<GenreMoviesScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          Get.to(
-            () => MovieDetailsScreen(
-              title: movie.title,
-              subtitle: movie.subtitle ?? movie.genres,
-              heroImageUrl: movie.imageUrl,
-            ),
-          );
+          navigateToMediaDetails(media: movie);
         },
         borderRadius: BorderRadius.circular(16),
         child: Container(

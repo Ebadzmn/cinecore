@@ -1,31 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/home_controller.dart';
+import '../../core/utils/navigation_utils.dart';
 import '../../data/models/movie_model.dart';
-import '../screen/movie_details_screen.dart';
 
 class LatestMoviesSection extends StatelessWidget {
   final ValueChanged<MovieModel>? onMovieTap;
   final VoidCallback? onSeeAll;
+  final List<MovieModel>? movies;
+  final String? title;
+  final String? subtitle;
 
   const LatestMoviesSection({
     super.key,
     this.onMovieTap,
     this.onSeeAll,
+    this.movies,
+    this.title,
+    this.subtitle,
   });
 
   void _navigateToDetails(BuildContext context, MovieModel movie) {
     if (onMovieTap != null) {
       onMovieTap!(movie);
     } else {
-      Get.to(
-        () => MovieDetailsScreen(
-          title: movie.title,
-          subtitle: movie.subtitle ?? movie.genres,
-          heroImageUrl: movie.imageUrl,
-        ),
-        transition: Transition.fadeIn,
-      );
+      navigateToMediaDetails(media: movie);
     }
   }
 
@@ -65,9 +64,9 @@ class LatestMoviesSection extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Text(
-                    'Latest Movies',
-                    style: TextStyle(
+                  Text(
+                    title ?? 'Latest Movies',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -122,15 +121,17 @@ class LatestMoviesSection extends StatelessWidget {
         ),
         const SizedBox(height: 14),
 
-        // 2-Column Vertical Grid displaying 10 movies
+        // 2-Column Vertical Grid displaying 12 movies
         Obx(() {
-          final movies = homeController.latestMovies.take(10).toList();
+          final displayList = (movies != null && movies!.isNotEmpty)
+              ? movies!.take(12).toList()
+              : homeController.latestMovies.take(12).toList();
 
-          if (homeController.isLoading.value && movies.isEmpty) {
+          if (homeController.isLoading.value && displayList.isEmpty) {
             return _buildLoadingShimmer();
           }
 
-          if (movies.isEmpty) {
+          if (displayList.isEmpty) {
             return const SizedBox.shrink();
           }
 
@@ -140,7 +141,7 @@ class LatestMoviesSection extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               padding: EdgeInsets.zero,
-              itemCount: movies.length,
+              itemCount: displayList.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 childAspectRatio: 0.63,
@@ -148,7 +149,7 @@ class LatestMoviesSection extends StatelessWidget {
                 mainAxisSpacing: 16,
               ),
               itemBuilder: (context, index) {
-                final movie = movies[index];
+                final movie = displayList[index];
                 return _buildMovieCard(context, movie);
               },
             ),
@@ -252,30 +253,67 @@ class LatestMoviesSection extends StatelessWidget {
                       ),
                     ),
 
-                    // Top Left: Resolution / New badge
+                    // Top Left: Pinned badge or Resolution badge
                     Positioned(
                       top: 8,
                       left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.65),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: const Color(0xFFF59E0B).withValues(alpha: 0.6),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Text(
-                          movie.resolution.isNotEmpty ? movie.resolution : '4K UHD',
-                          style: const TextStyle(
-                            color: Color(0xFFFBBF24),
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                      ),
+                      child: movie.isPinned
+                          ? Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                                ),
+                                borderRadius: BorderRadius.circular(6),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFF59E0B).withValues(alpha: 0.6),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.push_pin_rounded,
+                                    color: Colors.black,
+                                    size: 10,
+                                  ),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    'PINNED',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.6,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.65),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFFF59E0B).withValues(alpha: 0.6),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Text(
+                                movie.resolution.isNotEmpty ? movie.resolution : '4K UHD',
+                                style: const TextStyle(
+                                  color: Color(0xFFFBBF24),
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                            ),
                     ),
 
                     // Top Right: Rating Pill

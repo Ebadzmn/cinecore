@@ -5,7 +5,7 @@ import '../../controllers/watchlist_controller.dart';
 import '../../data/models/movie_model.dart';
 import '../widget/watchlist/watchlist_empty_view.dart';
 import '../widget/watchlist/watchlist_item_card.dart';
-import 'movie_details_screen.dart';
+import '../../core/utils/navigation_utils.dart';
 import 'movie_player_screen.dart';
 
 class WatchlistScreen extends StatelessWidget {
@@ -170,14 +170,7 @@ class WatchlistScreen extends StatelessWidget {
   }
 
   void _navigateToDetails(MovieModel movie) {
-    Get.to(
-      () => MovieDetailsScreen(
-        title: movie.title,
-        subtitle: movie.subtitle ?? movie.genres,
-        heroImageUrl: movie.imageUrl,
-      ),
-      transition: Transition.fadeIn,
-    );
+    navigateToMediaDetails(media: movie);
   }
 
   void _navigateToPlayer(MovieModel movie) {

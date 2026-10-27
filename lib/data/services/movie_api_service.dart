@@ -6,6 +6,7 @@ import '../models/continue_watching_model.dart';
 import '../models/genre_model.dart';
 import '../models/movie_model.dart';
 import '../models/user_profile_model.dart';
+import '../models/home_feed_model.dart';
 
 class MovieApiService {
   final ApiClient _apiClient = ApiClient();
@@ -43,6 +44,11 @@ class MovieApiService {
 
   /// Fetch movies by genre (`/api/v1/movies?genre=<genreName>`)
   Future<List<MovieModel>> getMoviesByGenre(String genre, {int page = 1, int limit = 10}) async {
+    final lower = genre.toLowerCase().trim();
+    if (lower == 'series' || lower == 'tv shows' || lower == 'tv-shows' || lower == 'shows') {
+      return getSeriesList(page: page, limit: limit);
+    }
+
     final results = <MovieModel>[];
     final seenIds = <String>{};
 
@@ -75,7 +81,7 @@ class MovieApiService {
   }
 
   /// Fetch latest released or added movies (`/api/v1/movies?sortBy=createdAt&sortOrder=desc&limit=<limit>`)
-  Future<List<MovieModel>> getLatestMovies({int page = 1, int limit = 10}) async {
+  Future<List<MovieModel>> getLatestMovies({int page = 1, int limit = 12}) async {
     final results = <MovieModel>[];
     final seenIds = <String>{};
 
@@ -107,6 +113,28 @@ class MovieApiService {
     return results.take(limit).toList();
   }
 
+  /// Fetch all TV Series from backend (`/api/v1/movies?type=SERIES&page=<page>&limit=<limit>`)
+  Future<List<MovieModel>> getSeriesList({int page = 1, int limit = 12}) async {
+    final results = <MovieModel>[];
+    final seenIds = <String>{};
+
+    try {
+      final response = await _apiClient.get(
+        '${ApiConstants.movies}?type=SERIES&sortBy=createdAt&sortOrder=desc&page=$page&limit=$limit',
+      );
+      if (response.data != null && response.data['data'] is List) {
+        for (final item in response.data['data'] as List) {
+          final series = MovieModel.fromJson(item as Map<String, dynamic>);
+          if (series.id.isNotEmpty && seenIds.add(series.id)) {
+            results.add(series);
+          }
+        }
+      }
+    } catch (_) {}
+
+    return results;
+  }
+
   static const List<GenreModel> defaultGenres = [
     GenreModel(name: 'Action', count: 12),
     GenreModel(name: 'Adventure', count: 9),
@@ -122,7 +150,17 @@ class MovieApiService {
     GenreModel(name: 'Animation', count: 8),
   ];
 
-  // 1. Fetch Home Feed
+  // 1. Fetch Dynamic Home Feed from CMS
+  Future<HomeFeedModel?> getHomeFeed() async {
+    try {
+      final response = await _apiClient.get(ApiConstants.homeFeed);
+      if (response.data != null && response.data['data'] is Map<String, dynamic>) {
+        return HomeFeedModel.fromJson(response.data['data'] as Map<String, dynamic>);
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<List<MovieModel>> getSpotlightMovies() async {
     try {
       final response = await _apiClient.get(ApiConstants.spotlight);
@@ -180,6 +218,17 @@ class MovieApiService {
   }
 
   // 2. Fetch Details, Cast, Related & Gallery
+  /// Fetch complete Movie Details including watch link, cast list, and metadata
+  Future<MovieModel?> getMovieDetails(String movieIdOrSlug) async {
+    try {
+      final response = await _apiClient.get('${ApiConstants.movies}/$movieIdOrSlug');
+      if (response.data != null && response.data['data'] is Map<String, dynamic>) {
+        return MovieModel.fromJson(response.data['data'] as Map<String, dynamic>);
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<List<CastMemberModel>> getCastMembers(String movieId) async {
     try {
       final response = await _apiClient.get('${ApiConstants.movies}/$movieId/cast-crew');
@@ -208,17 +257,27 @@ class MovieApiService {
     return _defaultScreenshots;
   }
 
-  Future<List<MovieModel>> getRelatedMovies(String movieId) async {
+  Future<List<MovieModel>> getRelatedMovies(String movieId, {String? category, String? genre}) async {
     try {
       final response = await _apiClient.get('${ApiConstants.movies}/$movieId/related');
       if (response.data != null && response.data['data'] is List) {
-        return (response.data['data'] as List)
+        final list = (response.data['data'] as List)
             .map((item) => MovieModel.fromJson(item as Map<String, dynamic>))
+            .where((m) => m.id != movieId)
             .toList();
+        if (list.isNotEmpty) return list;
       }
     } catch (_) {
       // Fallback
     }
+
+    if (genre != null && genre.isNotEmpty) {
+      final firstGenre = genre.split(',').first.trim();
+      final genreMovies = await getMoviesByGenre(firstGenre);
+      final filtered = genreMovies.where((m) => m.id != movieId).toList();
+      if (filtered.isNotEmpty) return filtered;
+    }
+
     return _defaultRelatedMovies;
   }
 
@@ -226,17 +285,23 @@ class MovieApiService {
   Future<List<MovieModel>> searchMovies({
     required String query,
     String? genre,
+    String? type,
     String? studio,
     String? sortBy,
+    int page = 1,
+    int limit = 30,
   }) async {
     try {
       final response = await _apiClient.get(
         ApiConstants.search,
         queryParameters: {
-          'q': query,
-          if (genre != null && genre != 'All') 'genre': genre,
+          if (query.trim().isNotEmpty) 'q': query.trim(),
+          if (genre != null && genre != 'All' && genre != 'ALL') 'genre': genre,
+          if (type != null && type != 'All' && type != 'ALL') 'type': type,
           if (studio != null && studio != 'All Studios') 'studio': studio,
-          if (sortBy != null) 'sort_by': sortBy.toLowerCase(),
+          if (sortBy != null) 'sortBy': sortBy.toLowerCase(),
+          'page': page,
+          'limit': limit,
         },
       );
       if (response.data != null && response.data['data'] is List) {
@@ -254,9 +319,32 @@ class MovieApiService {
           (movie.subtitle?.toLowerCase().contains(query.toLowerCase()) ?? false) ||
           movie.genres.toLowerCase().contains(query.toLowerCase());
       final matchesGenre = genre == null || genre == 'All' || movie.genres.toLowerCase().contains(genre.toLowerCase());
+      final matchesType = type == null || type == 'All' || type == 'ALL' ||
+          (type == 'SERIES' ? movie.isSeries : !movie.isSeries);
       final matchesStudio = studio == null || studio == 'All Studios' || (movie.studio?.toLowerCase().contains(studio.toLowerCase()) ?? false);
-      return matchesQuery && matchesGenre && matchesStudio;
+      return matchesQuery && matchesGenre && matchesType && matchesStudio;
     }).toList();
+  }
+
+  /// Fetch dynamic trending search suggestions and popular genres from backend
+  Future<Map<String, List<String>>> getSearchSuggestions() async {
+    try {
+      final response = await _apiClient.get(ApiConstants.trendingKeywords);
+      if (response.data != null && response.data['data'] is Map<String, dynamic>) {
+        final data = response.data['data'] as Map<String, dynamic>;
+        final keywords = (data['trendingKeywords'] as List?)
+            ?.map((e) => e.toString())
+            .toList() ?? [];
+        final genres = (data['popularGenres'] as List?)
+            ?.map((e) => e.toString())
+            .toList() ?? [];
+        return {'trendingKeywords': keywords, 'popularGenres': genres};
+      }
+    } catch (_) {}
+    return {
+      'trendingKeywords': ['Breaking Bad', 'Dune', 'Prison Break', 'Diamonds Are Forever'],
+      'popularGenres': ['Action', 'Sci-Fi', 'Drama', 'Crime', 'Thriller'],
+    };
   }
 
   // 4. Watchlist API

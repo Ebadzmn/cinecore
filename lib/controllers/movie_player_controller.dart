@@ -1,32 +1,204 @@
 import 'dart:async';
 import 'package:get/get.dart';
+import 'package:video_player/video_player.dart';
+import '../data/models/video_quality_option.dart';
+import '../data/services/hls_playlist_service.dart';
 
 class MoviePlayerController extends GetxController {
-  final RxBool isPlaying = true.obs;
+  final String? streamUrl;
+
+  MoviePlayerController({this.streamUrl});
+
+  VideoPlayerController? videoPlayerController;
+  final RxBool isInitialized = false.obs;
+  final RxBool isPlaying = false.obs;
+  final RxBool isBuffering = false.obs;
+  final RxBool hasError = false.obs;
+  final RxString errorMessage = ''.obs;
   final RxBool showControls = true.obs;
-  final RxDouble currentSeconds = 1420.0.obs; // ~23m 40s
-  final double totalSeconds = 8040.0; // 2h 14m (134 min)
+
+  final RxDouble currentSeconds = 0.0.obs;
+  final RxDouble totalSeconds = 100.0.obs;
   final RxDouble playbackSpeed = 1.0.obs;
 
-  final RxString selectedQuality = '4K Ultra HD'.obs;
+  final RxBool isQualityChanging = false.obs;
+  final RxBool isQualitiesLoading = false.obs;
+  final RxList<VideoQualityOption> availableQualities = <VideoQualityOption>[].obs;
+  final Rx<VideoQualityOption?> currentQualityOption = Rx<VideoQualityOption?>(null);
+  final RxString selectedQuality = 'Auto'.obs;
   final RxString selectedAudio = 'English (Dolby Atmos)'.obs;
   final RxString selectedSubtitle = 'English [CC]'.obs;
 
   Timer? _controlsTimer;
-  Timer? _playbackTicker;
+  Timer? _fallbackTicker;
 
   @override
   void onInit() {
     super.onInit();
+    _initializePlayer();
     startControlsTimer();
-    startPlaybackSimulation();
   }
 
-  void startPlaybackSimulation() {
-    _playbackTicker?.cancel();
-    _playbackTicker = Timer.periodic(const Duration(seconds: 1), (timer) {
+  Future<void> fetchAvailableQualities(String masterUrl) async {
+    final clean = masterUrl.trim();
+    if (clean.isEmpty) return;
+    try {
+      isQualitiesLoading.value = true;
+      final parsed = await HlsPlaylistService.parseQualities(clean);
+      if (parsed.isNotEmpty) {
+        availableQualities.assignAll(parsed);
+        if (currentQualityOption.value == null) {
+          currentQualityOption.value = parsed.first;
+          selectedQuality.value = parsed.first.id;
+        }
+      }
+    } catch (_) {
+    } finally {
+      isQualitiesLoading.value = false;
+    }
+  }
+
+  Future<void> _initializePlayer({VideoQualityOption? targetQuality}) async {
+    final activeUrl = streamUrl ?? '';
+
+    if (activeUrl.isNotEmpty) {
+      if (availableQualities.isEmpty) {
+        await fetchAvailableQualities(activeUrl);
+      }
+
+      final chosenOption = targetQuality ??
+          currentQualityOption.value ??
+          (availableQualities.isNotEmpty ? availableQualities.first : null);
+
+      final streamToLoad = chosenOption?.url ?? activeUrl;
+
+      try {
+        if (videoPlayerController != null) {
+          videoPlayerController!.removeListener(_videoListener);
+          await videoPlayerController!.dispose();
+          videoPlayerController = null;
+        }
+
+        final uri = Uri.parse(streamToLoad);
+        videoPlayerController = VideoPlayerController.networkUrl(uri);
+        await videoPlayerController!.initialize();
+
+        isInitialized.value = true;
+        hasError.value = false;
+        final dur = videoPlayerController!.value.duration.inSeconds.toDouble();
+        totalSeconds.value = dur > 0 ? dur : 100.0;
+
+        videoPlayerController!.addListener(_videoListener);
+
+        if (currentSeconds.value > 0) {
+          await videoPlayerController!.seekTo(Duration(seconds: currentSeconds.value.toInt()));
+        }
+        if (playbackSpeed.value != 1.0) {
+          await videoPlayerController!.setPlaybackSpeed(playbackSpeed.value);
+        }
+
+        await videoPlayerController!.play();
+        isPlaying.value = true;
+        if (chosenOption != null) {
+          currentQualityOption.value = chosenOption;
+          selectedQuality.value = chosenOption.id;
+        }
+      } catch (e) {
+        if (chosenOption != null && !chosenOption.isAuto && availableQualities.isNotEmpty) {
+          final autoOpt = availableQualities.firstWhere(
+            (o) => o.isAuto,
+            orElse: () => availableQualities.first,
+          );
+          await _initializePlayer(targetQuality: autoOpt);
+          return;
+        }
+        hasError.value = true;
+        errorMessage.value = e.toString();
+        _startFallbackSimulation();
+      }
+    } else {
+      _startFallbackSimulation();
+    }
+  }
+
+  Future<void> changeQuality(VideoQualityOption option) async {
+    if (currentQualityOption.value?.id == option.id && isInitialized.value) return;
+
+    final targetUrl = option.url;
+    if (targetUrl.isEmpty) return;
+
+    try {
+      isQualityChanging.value = true;
+      final currentPos = currentSeconds.value;
+      final wasPlaying = isPlaying.value;
+
+      if (videoPlayerController != null) {
+        videoPlayerController!.removeListener(_videoListener);
+        await videoPlayerController!.pause();
+        await videoPlayerController!.dispose();
+        videoPlayerController = null;
+      }
+
+      final uri = Uri.parse(targetUrl);
+      final newController = VideoPlayerController.networkUrl(uri);
+      await newController.initialize();
+
+      videoPlayerController = newController;
+      isInitialized.value = true;
+      hasError.value = false;
+      currentQualityOption.value = option;
+      selectedQuality.value = option.id;
+
+      final dur = newController.value.duration.inSeconds.toDouble();
+      if (dur > 0) totalSeconds.value = dur;
+
+      newController.addListener(_videoListener);
+      if (currentPos > 0) {
+        await newController.seekTo(Duration(seconds: currentPos.toInt()));
+      }
+      if (playbackSpeed.value != 1.0) {
+        await newController.setPlaybackSpeed(playbackSpeed.value);
+      }
+
+      if (wasPlaying) {
+        await newController.play();
+        isPlaying.value = true;
+        startControlsTimer();
+      }
+    } catch (_) {
+      if (!option.isAuto && availableQualities.isNotEmpty) {
+        final autoOpt = availableQualities.firstWhere(
+          (o) => o.isAuto,
+          orElse: () => availableQualities.first,
+        );
+        await changeQuality(autoOpt);
+      } else {
+        hasError.value = true;
+      }
+    } finally {
+      isQualityChanging.value = false;
+    }
+  }
+
+  void _videoListener() {
+    if (videoPlayerController == null || !videoPlayerController!.value.isInitialized) return;
+
+    final val = videoPlayerController!.value;
+    isPlaying.value = val.isPlaying;
+    isBuffering.value = val.isBuffering;
+
+    if (val.duration.inSeconds > 0) {
+      totalSeconds.value = val.duration.inSeconds.toDouble();
+    }
+    currentSeconds.value = val.position.inSeconds.toDouble();
+  }
+
+  void _startFallbackSimulation() {
+    isPlaying.value = true;
+    _fallbackTicker?.cancel();
+    _fallbackTicker = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (isPlaying.value) {
-        if (currentSeconds.value < totalSeconds) {
+        if (currentSeconds.value < totalSeconds.value) {
           currentSeconds.value += playbackSpeed.value;
         } else {
           isPlaying.value = false;
@@ -52,21 +224,36 @@ class MoviePlayerController extends GetxController {
   }
 
   void togglePlayPause() {
-    isPlaying.value = !isPlaying.value;
-    if (isPlaying.value) {
-      startControlsTimer();
+    if (videoPlayerController != null && videoPlayerController!.value.isInitialized) {
+      if (videoPlayerController!.value.isPlaying) {
+        videoPlayerController!.pause();
+        isPlaying.value = false;
+        _controlsTimer?.cancel();
+      } else {
+        videoPlayerController!.play();
+        isPlaying.value = true;
+        startControlsTimer();
+      }
     } else {
-      _controlsTimer?.cancel();
+      isPlaying.value = !isPlaying.value;
+      if (isPlaying.value) {
+        startControlsTimer();
+      } else {
+        _controlsTimer?.cancel();
+      }
     }
   }
 
   void seekBy(double seconds) {
-    currentSeconds.value = (currentSeconds.value + seconds).clamp(0.0, totalSeconds);
-    startControlsTimer();
+    final newSec = (currentSeconds.value + seconds).clamp(0.0, totalSeconds.value);
+    seekTo(newSec);
   }
 
   void seekTo(double seconds) {
-    currentSeconds.value = seconds.clamp(0.0, totalSeconds);
+    currentSeconds.value = seconds.clamp(0.0, totalSeconds.value);
+    if (videoPlayerController != null && videoPlayerController!.value.isInitialized) {
+      videoPlayerController!.seekTo(Duration(seconds: seconds.toInt()));
+    }
     startControlsTimer();
   }
 
@@ -79,6 +266,10 @@ class MoviePlayerController extends GetxController {
       playbackSpeed.value = 2.0;
     } else {
       playbackSpeed.value = 1.0;
+    }
+
+    if (videoPlayerController != null && videoPlayerController!.value.isInitialized) {
+      videoPlayerController!.setPlaybackSpeed(playbackSpeed.value);
     }
   }
 
@@ -100,7 +291,11 @@ class MoviePlayerController extends GetxController {
   @override
   void onClose() {
     _controlsTimer?.cancel();
-    _playbackTicker?.cancel();
+    _fallbackTicker?.cancel();
+    if (videoPlayerController != null) {
+      videoPlayerController!.removeListener(_videoListener);
+      videoPlayerController!.dispose();
+    }
     super.onClose();
   }
 }

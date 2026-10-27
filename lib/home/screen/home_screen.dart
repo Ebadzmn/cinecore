@@ -15,12 +15,13 @@ import '../widget/genre_movie_row_section.dart';
 import '../widget/genres_horizontal_section.dart';
 import '../widget/top_blockbusters_section.dart';
 import '../widget/latest_movies_section.dart';
+import '../widget/popular_series_row_section.dart';
 import 'genre_movies_screen.dart';
 import 'leaderboard_screen.dart';
-import 'movie_details_screen.dart';
 import 'movie_player_screen.dart';
 import 'search_screen.dart';
 import 'watchlist_screen.dart';
+import '../../core/utils/navigation_utils.dart';
 import '../../welcome/screen/welcome_screen.dart';
 import '../../auth/screen/get_started_screen.dart';
 import '../../auth/screen/login_screen.dart';
@@ -136,32 +137,34 @@ class HomeScreen extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 22)),
 
-            // 3. Spotlight Hero Carousel Slider
+            // 3. Dynamic Spotlight Hero Carousel Slider (from CMS)
             SliverToBoxAdapter(
-              child: SpotlightHeroCard(
-                onMovieTap: (item) => _navigateToDetails(
-                  title: item.fullTitle,
-                  subtitle: item.subtitle,
-                  heroImageUrl: item.imageUrl,
+              child: Obx(
+                () => SpotlightHeroCard(
+                  items: homeController.heroBanners.isNotEmpty
+                      ? homeController.heroBanners.map((b) => b.toSpotlightItem()).toList()
+                      : null,
+                  onMovieTap: (item) => _handleBannerTap(homeController, item),
+                  onWatchNow: (item) => _handleBannerWatchNow(homeController, item),
+                  onAddToList: (item) {
+                    final banner = homeController.heroBanners.firstWhereOrNull((b) => b.id == item.id);
+                    if (banner?.movie != null) {
+                      watchlistController.toggleWatchlist(banner!.movie!);
+                    } else {
+                      watchlistController.toggleWatchlist(
+                        MovieModel(
+                          id: item.fullTitle.toLowerCase().replaceAll(' ', '_'),
+                          title: item.fullTitle,
+                          subtitle: item.subtitle,
+                          imageUrl: item.imageUrl,
+                          rating: 9.3,
+                          resolution: '4K Ultra HD',
+                          genres: 'Action, Sci-Fi',
+                        ),
+                      );
+                    }
+                  },
                 ),
-                onWatchNow: (item) => _navigateToPlayer(
-                  title: item.fullTitle,
-                  subtitle: item.subtitle,
-                  heroImageUrl: item.imageUrl,
-                ),
-                onAddToList: (item) {
-                  watchlistController.toggleWatchlist(
-                    MovieModel(
-                      id: item.fullTitle.toLowerCase().replaceAll(' ', '_'),
-                      title: item.fullTitle,
-                      subtitle: item.subtitle,
-                      imageUrl: item.imageUrl,
-                      rating: 9.3,
-                      resolution: '4K Ultra HD',
-                      genres: 'Action, Sci-Fi',
-                    ),
-                  );
-                },
               ),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 22)),
@@ -176,102 +179,10 @@ class HomeScreen extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 26)),
 
-            // 5. Top 10 Blockbusters Section
-            SliverToBoxAdapter(
-              child: TopBlockbustersSection(
-                onMovieTap: (movie) => _navigateToDetails(
-                  title: movie.title,
-                  subtitle: movie.genres,
-                  heroImageUrl: movie.imageUrl,
-                ),
-                onSeeLeaderboard: () => Get.to(() => const LeaderboardScreen()),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 26)),
+            // 5. Dynamic Home Sections (Admin Dashboard Controlled Order & Content)
+            ..._buildDynamicSections(context, homeController),
 
-            // 6. Latest Movies (10 items, 2-column vertical grid)
-            SliverToBoxAdapter(
-              child: LatestMoviesSection(
-                onMovieTap: (movie) => _navigateToDetails(
-                  title: movie.title,
-                  subtitle: movie.subtitle ?? movie.genres,
-                  heroImageUrl: movie.imageUrl,
-                ),
-                onSeeAll: () => homeController.changeNavIndex(1),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 26)),
-
-            // 7. Action Movies (10 items)
-            SliverToBoxAdapter(
-              child: GenreMovieRowSection(
-                genreName: 'Action',
-                title: 'Action Movies',
-                onMovieTap: (movie) => _navigateToDetails(
-                  title: movie.title,
-                  subtitle: movie.subtitle ?? movie.genres,
-                  heroImageUrl: movie.imageUrl,
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 26)),
-
-            // 8. Crime Movies (10 items)
-            SliverToBoxAdapter(
-              child: GenreMovieRowSection(
-                genreName: 'Crime',
-                title: 'Crime & Mystery',
-                onMovieTap: (movie) => _navigateToDetails(
-                  title: movie.title,
-                  subtitle: movie.subtitle ?? movie.genres,
-                  heroImageUrl: movie.imageUrl,
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 26)),
-
-            // 9. Science Fiction Movies (10 items)
-            SliverToBoxAdapter(
-              child: GenreMovieRowSection(
-                genreName: 'Science Fiction',
-                title: 'Science Fiction',
-                onMovieTap: (movie) => _navigateToDetails(
-                  title: movie.title,
-                  subtitle: movie.subtitle ?? movie.genres,
-                  heroImageUrl: movie.imageUrl,
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 26)),
-
-            // 10. Peacock Picks Section
-            SliverToBoxAdapter(
-              child: PeacockPicksSection(
-                onMovieTap: (movie) => _navigateToDetails(
-                  title: movie.title,
-                  subtitle: movie.subtitle ?? 'The Epic Sequel',
-                  heroImageUrl: movie.imageUrl,
-                ),
-                onSeeAll: () => homeController.changeNavIndex(1),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 26)),
-
-            // 11. Thriller Movies (10 items)
-            SliverToBoxAdapter(
-              child: GenreMovieRowSection(
-                genreName: 'Thriller',
-                title: 'Edge-of-Seat Thrillers',
-                onMovieTap: (movie) => _navigateToDetails(
-                  title: movie.title,
-                  subtitle: movie.subtitle ?? movie.genres,
-                  heroImageUrl: movie.imageUrl,
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 26)),
-
-            // 12. Continue Watching Section
+            // 6. Continue Watching Section
             SliverToBoxAdapter(
               child: ContinueWatchingSection(
                 onItemTap: (item) => _navigateToPlayer(
@@ -289,18 +200,211 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  List<Widget> _buildDynamicSections(
+    BuildContext context,
+    HomeController homeController,
+  ) {
+    return [
+      SliverToBoxAdapter(
+        child: Obx(() {
+          final sections = homeController.homeSections.toList();
+          if (sections.isEmpty) {
+            // Fallback default sections
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TopBlockbustersSection(
+                  onMovieTap: (movie) => _navigateToDetails(
+                    movieId: movie.id,
+                    title: movie.title,
+                    subtitle: movie.genres,
+                    heroImageUrl: movie.imageUrl,
+                  ),
+                  onSeeLeaderboard: () => Get.to(() => const LeaderboardScreen()),
+                ),
+                const SizedBox(height: 26),
+                PopularSeriesRowSection(
+                  onSeriesTap: (series) => _navigateToDetails(
+                    movie: series,
+                    movieId: series.id,
+                    title: series.title,
+                    subtitle: series.subtitle ?? series.genres,
+                    heroImageUrl: series.imageUrl,
+                  ),
+                ),
+                const SizedBox(height: 26),
+                LatestMoviesSection(
+                  onMovieTap: (movie) => _navigateToDetails(
+                    movie: movie,
+                    movieId: movie.id,
+                    title: movie.title,
+                    subtitle: movie.subtitle ?? movie.genres,
+                    heroImageUrl: movie.imageUrl,
+                  ),
+                  onSeeAll: () => homeController.changeNavIndex(1),
+                ),
+                const SizedBox(height: 26),
+                PeacockPicksSection(
+                  onMovieTap: (movie) => _navigateToDetails(
+                    movieId: movie.id,
+                    title: movie.title,
+                    subtitle: movie.subtitle ?? 'The Epic Sequel',
+                    heroImageUrl: movie.imageUrl,
+                  ),
+                  onSeeAll: () => homeController.changeNavIndex(1),
+                ),
+                const SizedBox(height: 26),
+              ],
+            );
+          }
+
+          // Dynamic Sections from CMS
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: sections.where((s) => s.isActive).map((section) {
+              Widget sectionWidget;
+              if (section.key == 'top_10_blockbusters' || section.sectionType == 'TOP_10') {
+                final rankedItems = section.items
+                    .asMap()
+                    .entries
+                    .map((e) => e.value.toTopBlockbusterMovie(e.key))
+                    .toList();
+                sectionWidget = TopBlockbustersSection(
+                  title: section.title,
+                  subtitle: section.subtitle,
+                  movies: rankedItems,
+                  onMovieTap: (movie) {
+                    final orig = section.movies.firstWhereOrNull((m) => m.id == movie.id);
+                    _navigateToDetails(
+                      movie: orig,
+                      movieId: movie.id,
+                      title: movie.title,
+                      subtitle: movie.genres,
+                      heroImageUrl: movie.imageUrl,
+                    );
+                  },
+                  onSeeLeaderboard: () => Get.to(() => const LeaderboardScreen()),
+                );
+              } else if (section.key == 'latest_movies' || section.sectionType == 'GRID') {
+                sectionWidget = LatestMoviesSection(
+                  title: section.title,
+                  subtitle: section.subtitle,
+                  movies: section.movies.take(12).toList(),
+                  onMovieTap: (movie) => _navigateToDetails(
+                    movie: movie,
+                    movieId: movie.id,
+                    title: movie.title,
+                    subtitle: movie.subtitle ?? movie.genres,
+                    heroImageUrl: movie.imageUrl,
+                  ),
+                  onSeeAll: () => homeController.changeNavIndex(1),
+                );
+              } else if (section.key == 'latest_series' ||
+                  section.key == 'top_series' ||
+                  section.sectionType == 'SERIES_ROW') {
+                sectionWidget = PopularSeriesRowSection(
+                  title: section.title,
+                  subtitle: section.subtitle,
+                  series: section.movies.take(12).toList(),
+                  onSeriesTap: (series) => _navigateToDetails(
+                    movie: series,
+                    movieId: series.id,
+                    title: series.title,
+                    subtitle: series.subtitle ?? series.genres,
+                    heroImageUrl: series.imageUrl,
+                  ),
+                );
+              } else {
+                sectionWidget = GenreMovieRowSection(
+                  genreName: section.title,
+                  title: section.title,
+                  subtitle: section.subtitle,
+                  movies: section.movies,
+                  onMovieTap: (movie) => _navigateToDetails(
+                    movie: movie,
+                    movieId: movie.id,
+                    title: movie.title,
+                    subtitle: movie.subtitle ?? movie.genres,
+                    heroImageUrl: movie.imageUrl,
+                  ),
+                );
+              }
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 26),
+                child: sectionWidget,
+              );
+            }).toList(),
+          );
+        }),
+      ),
+    ];
+  }
+
+  void _handleBannerTap(HomeController homeController, SpotlightMovieItem item) {
+    final banner = homeController.heroBanners.firstWhereOrNull((b) => b.id == item.id);
+    if (banner?.movie != null) {
+      _navigateToDetails(
+        movie: banner!.movie,
+        movieId: banner.movie!.id,
+        title: banner.title,
+        subtitle: banner.subtitle,
+        heroImageUrl: banner.displayImageUrl,
+      );
+    } else {
+      _navigateToDetails(
+        title: item.fullTitle,
+        subtitle: item.subtitle,
+        heroImageUrl: item.imageUrl,
+      );
+    }
+  }
+
+  void _handleBannerWatchNow(HomeController homeController, SpotlightMovieItem item) {
+    final banner = homeController.heroBanners.firstWhereOrNull((b) => b.id == item.id);
+    if (banner != null && banner.ctaAction == 'DETAILS') {
+      _handleBannerTap(homeController, item);
+      return;
+    }
+    if (banner?.movie != null) {
+      if (banner!.movie!.isSeries) {
+        _navigateToDetails(
+          movie: banner.movie,
+          movieId: banner.movie!.id,
+          title: banner.title,
+          subtitle: banner.subtitle,
+          heroImageUrl: banner.displayImageUrl,
+        );
+      } else {
+        _navigateToPlayer(
+          title: banner.title,
+          subtitle: banner.subtitle,
+          heroImageUrl: banner.displayImageUrl,
+          watchUrl: banner.movie?.playbackUrl ?? banner.movie?.watchUrl,
+        );
+      }
+    } else {
+      _navigateToPlayer(
+        title: item.fullTitle,
+        subtitle: item.subtitle,
+        heroImageUrl: item.imageUrl,
+      );
+    }
+  }
+
   void _navigateToDetails({
+    String? movieId,
+    MovieModel? movie,
     required String title,
     required String subtitle,
     required String heroImageUrl,
   }) {
-    Get.to(
-      () => MovieDetailsScreen(
-        title: title,
-        subtitle: subtitle,
-        heroImageUrl: heroImageUrl,
-      ),
-      transition: Transition.fadeIn,
+    navigateToMediaDetails(
+      mediaId: movieId ?? movie?.id,
+      media: movie,
+      title: title,
+      subtitle: subtitle,
+      heroImageUrl: heroImageUrl,
     );
   }
 
@@ -308,12 +412,14 @@ class HomeScreen extends StatelessWidget {
     required String title,
     required String subtitle,
     required String heroImageUrl,
+    String? watchUrl,
   }) {
     Get.to(
       () => MoviePlayerScreen(
         title: title,
         subtitle: subtitle,
         heroImageUrl: heroImageUrl,
+        watchUrl: watchUrl,
       ),
       transition: Transition.fadeIn,
     );

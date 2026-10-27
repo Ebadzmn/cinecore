@@ -41,19 +41,18 @@ class MovieScreenshotsGallery extends StatelessWidget {
               final shot = screenshots[index];
               return ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                child: Container(
+                child: SizedBox(
                   width: 220,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF161822),
-                    border: Border.all(color: Colors.white12),
-                    borderRadius: BorderRadius.circular(14),
-                    image: DecorationImage(
-                      image: NetworkImage(shot.imageUrl),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
                   child: Stack(
+                    fit: StackFit.expand,
                     children: [
+                      shot.imageUrl.isNotEmpty
+                          ? Image.network(
+                              shot.imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => Container(color: const Color(0xFF161822)),
+                            )
+                          : Container(color: const Color(0xFF161822)),
                       Positioned.fill(
                         child: Container(
                           decoration: BoxDecoration(

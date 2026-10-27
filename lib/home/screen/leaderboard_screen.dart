@@ -5,7 +5,7 @@ import '../../controllers/leaderboard_controller.dart';
 import '../../data/models/movie_model.dart';
 import '../widget/leaderboard/leaderboard_movie_row.dart';
 import '../widget/leaderboard/leaderboard_podium_widget.dart';
-import 'movie_details_screen.dart';
+import '../../core/utils/navigation_utils.dart';
 
 class LeaderboardScreen extends StatelessWidget {
   const LeaderboardScreen({super.key});
@@ -184,13 +184,6 @@ class LeaderboardScreen extends StatelessWidget {
   }
 
   void _navigateToDetails(MovieModel movie) {
-    Get.to(
-      () => MovieDetailsScreen(
-        title: movie.title,
-        subtitle: movie.genres,
-        heroImageUrl: movie.imageUrl,
-      ),
-      transition: Transition.fadeIn,
-    );
+    navigateToMediaDetails(media: movie);
   }
 }

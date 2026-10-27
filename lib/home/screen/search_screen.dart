@@ -6,7 +6,7 @@ import '../../data/models/movie_model.dart';
 import '../widget/search/search_filter_chips.dart';
 import '../widget/search/search_input_header.dart';
 import '../widget/search/search_movies_grid.dart';
-import 'movie_details_screen.dart';
+import '../../core/utils/navigation_utils.dart';
 
 class SearchScreen extends StatelessWidget {
   final bool showBackButton;
@@ -29,95 +29,229 @@ class SearchScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF090A0E),
         body: SafeArea(
           bottom: false,
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              const SliverToBoxAdapter(child: SizedBox(height: 12)),
+          child: RefreshIndicator(
+            color: const Color(0xFFF59E0B),
+            backgroundColor: const Color(0xFF161822),
+            onRefresh: () => controller.performSearch(),
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              slivers: [
+                const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-              // 1. Search Bar Header
-              SliverToBoxAdapter(
-                child: SearchInputHeader(
-                  controller: controller.textController,
-                  focusNode: controller.focusNode,
-                  showBackButton: showBackButton,
-                  onChanged: (val) => controller.onQueryChanged(val),
-                  onClear: () {
-                    controller.textController.clear();
-                    controller.onQueryChanged('');
-                  },
+                // 1. Search Bar Header
+                SliverToBoxAdapter(
+                  child: SearchInputHeader(
+                    controller: controller.textController,
+                    focusNode: controller.focusNode,
+                    showBackButton: showBackButton,
+                    onChanged: (val) => controller.onQueryChanged(val),
+                    onClear: () {
+                      controller.textController.clear();
+                      controller.onQueryChanged('');
+                    },
+                  ),
                 ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
-              // 2. Genre Filter Pills
-              SliverToBoxAdapter(
-                child: Obx(
-                  () => SearchFilterChips(
-                    genres: controller.genres,
-                    selectedGenreIndex: controller.selectedGenreIndex.value,
-                    onGenreSelected: (idx) => controller.setGenre(idx),
+                // 2. Filter Pills & Controls (Media Type + Genres + Sort + View toggle)
+                SliverToBoxAdapter(
+                  child: Obx(
+                    () => SearchFilterChips(
+                      typeFilters: controller.typeFilters,
+                      selectedTypeIndex: controller.selectedTypeIndex.value,
+                      onTypeSelected: (idx) => controller.setTypeFilter(idx),
+                      genres: controller.genres.toList(),
+                      selectedGenreIndex: controller.selectedGenreIndex.value,
+                      onGenreSelected: (idx) => controller.setGenre(idx),
+                      selectedSortBy: controller.selectedSortBy.value,
+                      sortOptions: controller.sortOptions,
+                      onSortChanged: (sort) => controller.setSortBy(sort),
+                      isGridView: controller.isGridView.value,
+                      onToggleView: () => controller.toggleViewMode(),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+                // 3. Discovery Sections (Recent Searches & Trending Keywords when search bar is idle)
+                SliverToBoxAdapter(
+                  child: Obx(() {
+                    if (controller.searchQuery.value.isNotEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (controller.recentSearches.isNotEmpty)
+                          _buildRecentSearches(controller),
+                        if (controller.trendingKeywords.isNotEmpty)
+                          _buildTrendingKeywords(controller),
+                      ],
+                    );
+                  }),
+                ),
+
+                // 4. Search Results Header / Count
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Obx(
+                      () => Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 3,
+                                height: 14,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF59E0B),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                controller.searchQuery.value.isEmpty
+                                    ? 'EXPLORE CATALOG'
+                                    : 'RESULTS FOR "${controller.searchQuery.value.toUpperCase()}"',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              if (controller.isLoading.value) ...[
+                                const SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation(Color(0xFFF59E0B)),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Text(
+                                '${controller.searchResults.length} Titles',
+                                style: const TextStyle(
+                                  color: Color(0xFFFBBF24),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // 5. Grid or List View of Movies/Series
+                SliverToBoxAdapter(
+                  child: Obx(
+                    () => SearchMoviesGrid(
+                      movies: controller.searchResults.toList(),
+                      isLoading: controller.isLoading.value,
+                      isGridView: controller.isGridView.value,
+                      onMovieTap: (movie) => _navigateToDetails(movie),
+                      onClearFilters: () => controller.clearAllFilters(),
+                    ),
+                  ),
+                ),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 95)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentSearches(MovieSearchController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.history_rounded, color: Color(0xFFF59E0B), size: 15),
+                  SizedBox(width: 6),
+                  Text(
+                    'RECENT SEARCHES',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: () => controller.clearRecentSearches(),
+                child: Text(
+                  'Clear All',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-              // 3. Trending Keywords (Shown when query is empty)
-              SliverToBoxAdapter(
-                child: Obx(() {
-                  if (controller.searchQuery.value.isNotEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return _buildTrendingKeywords(controller);
-                }),
-              ),
-
-              // 4. Search Results Header / Count
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Obx(
-                    () => Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: controller.recentSearches.map((term) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF13151F),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF232738)),
+                ),
+                child: InkWell(
+                  onTap: () => controller.selectRecentSearch(term),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          controller.searchQuery.value.isEmpty
-                              ? 'EXPLORE POPULAR'
-                              : 'RESULTS FOR "${controller.searchQuery.value.toUpperCase()}"',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.6,
-                          ),
+                          term,
+                          style: const TextStyle(color: Colors.white70, fontSize: 11.5),
                         ),
-                        Text(
-                          '${controller.searchResults.length} Titles',
-                          style: const TextStyle(
-                            color: Color(0xFFFBBF24),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => controller.removeRecentSearch(term),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 13,
+                            color: Colors.white.withValues(alpha: 0.4),
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
-
-              // 5. Grid View of Movies
-              SliverToBoxAdapter(
-                child: Obx(
-                  () => SearchMoviesGrid(
-                    movies: controller.searchResults.toList(),
-                    onMovieTap: (movie) => _navigateToDetails(movie),
-                  ),
-                ),
-              ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 95)),
-            ],
+              );
+            }).toList(),
           ),
-        ),
+          const SizedBox(height: 14),
+        ],
       ),
     );
   }
@@ -130,13 +264,13 @@ class SearchScreen extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.local_fire_department_rounded, color: Color(0xFFF59E0B), size: 16),
+              Icon(Icons.local_fire_department_rounded, color: Color(0xFFF59E0B), size: 15),
               SizedBox(width: 6),
               Text(
-                'TRENDING SEARCHES',
+                'TRENDING DISCOVERIES',
                 style: TextStyle(
                   color: Colors.white70,
-                  fontSize: 11.5,
+                  fontSize: 11,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.5,
                 ),
@@ -148,34 +282,51 @@ class SearchScreen extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: controller.trendingKeywords.map((keyword) {
-              return ActionChip(
-                label: Text(
-                  keyword,
-                  style: const TextStyle(color: Colors.white70, fontSize: 11.5),
-                ),
-                backgroundColor: const Color(0xFF161822),
-                shape: RoundedRectangleBorder(
+              return Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                      const Color(0xFF161822),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(8),
-                  side: const BorderSide(color: Color(0xFF2A2D3A)),
+                  border: Border.all(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                  ),
                 ),
-                onPressed: () => controller.selectTrendingKeyword(keyword),
+                child: InkWell(
+                  onTap: () => controller.selectTrendingKeyword(keyword),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.trending_up_rounded, color: Color(0xFFF59E0B), size: 13),
+                        const SizedBox(width: 5),
+                        Text(
+                          keyword,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               );
             }).toList(),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
         ],
       ),
     );
   }
 
   void _navigateToDetails(MovieModel movie) {
-    Get.to(
-      () => MovieDetailsScreen(
-        title: movie.title,
-        subtitle: movie.subtitle ?? movie.genres,
-        heroImageUrl: movie.imageUrl,
-      ),
-      transition: Transition.fadeIn,
-    );
+    navigateToMediaDetails(media: movie);
   }
 }
