@@ -10,6 +10,7 @@ import '../widget/details/movie_metadata_badges.dart';
 import '../widget/details/movie_related_grid.dart';
 import '../widget/details/movie_screenshots_gallery.dart';
 import '../widget/details/movie_synopsis_card.dart';
+import '../widget/details/hero_title_description.dart';
 import '../../core/utils/navigation_utils.dart';
 import 'series_details_screen.dart';
 
@@ -128,16 +129,8 @@ class MovieDetailsScreen extends StatelessWidget {
                           height: 1.2,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        activeSubtitle,
-                        style: const TextStyle(
-                          color: Color(0xFFFBBF24),
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
+                      HeroTitleDescription(text: activeSubtitle),
+                      const SizedBox(height: 2),
 
                       // Badges (Rating, Year, Duration, Resolution, Age)
                       MovieMetadataBadges(
