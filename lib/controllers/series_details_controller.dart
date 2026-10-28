@@ -5,13 +5,17 @@ import '../data/models/cast_member_model.dart';
 import '../data/models/episode_model.dart';
 import '../data/models/movie_model.dart';
 import '../data/models/video_quality_option.dart';
+import '../data/models/watch_history_model.dart';
 import '../data/services/hls_playlist_service.dart';
 import '../data/services/movie_api_service.dart';
+import '../data/services/playback_service.dart';
+import 'playback_progress_controller.dart';
 
 class SeriesDetailsController extends GetxController {
   final String seriesId;
   final MovieModel? initialSeries;
   final MovieApiService _apiService = MovieApiService();
+  final PlaybackService _playbackService = PlaybackService();
 
   SeriesDetailsController({
     required this.seriesId,
@@ -23,6 +27,8 @@ class SeriesDetailsController extends GetxController {
   }
 
   final Rx<MovieModel?> series = Rx<MovieModel?>(null);
+  final Rx<WatchHistoryModel?> savedProgress = Rx<WatchHistoryModel?>(null);
+  Timer? _heartbeatTimer;
   final RxBool isSynopsisExpanded = false.obs;
   final RxBool isLoading = true.obs;
 
@@ -72,6 +78,64 @@ class SeriesDetailsController extends GetxController {
       _applySeriesData(initialSeries!);
     }
     loadSeriesDetails();
+    loadSavedProgress();
+  }
+
+  Future<void> loadSavedProgress() async {
+    try {
+      final progress = await _playbackService.getProgress(seriesId);
+      if (progress != null) {
+        savedProgress.value = progress;
+        PlaybackProgressController.to.updateProgress(
+          movieId: seriesId,
+          movieTitle: series.value?.title,
+          movieType: 'SERIES',
+          positionSeconds: progress.positionSeconds,
+          durationSeconds: progress.durationSeconds,
+          seasonNumber: progress.seasonNumber,
+          episodeNumber: progress.episodeNumber,
+          episodeTitle: progress.episodeTitle,
+          status: progress.status,
+        );
+      }
+    } catch (_) {}
+  }
+
+  void _syncEpisodeProgress({String action = 'HEARTBEAT'}) {
+    final ep = currentPlayingEpisode.value;
+    if (ep == null || totalVideoSeconds.value <= 0) return;
+
+    PlaybackProgressController.to.updateProgress(
+      movieId: seriesId,
+      movieTitle: series.value?.title,
+      movieType: 'SERIES',
+      positionSeconds: currentVideoSeconds.value,
+      durationSeconds: totalVideoSeconds.value,
+      seasonNumber: ep.seasonNumber,
+      episodeNumber: ep.episodeNumber,
+      episodeTitle: ep.title,
+      status: action == 'COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS',
+    );
+
+    _playbackService.recordProgress(
+      movieId: seriesId,
+      seasonNumber: ep.seasonNumber,
+      episodeNumber: ep.episodeNumber,
+      episodeId: ep.id,
+      episodeTitle: ep.title,
+      positionSeconds: currentVideoSeconds.value,
+      durationSeconds: totalVideoSeconds.value,
+      action: action,
+    );
+  }
+
+  void _startEpisodeHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (isVideoPlaying.value && currentVideoSeconds.value > 0) {
+        _syncEpisodeProgress(action: 'HEARTBEAT');
+      }
+    });
   }
 
   void _applySeriesData(MovieModel data) {
@@ -251,7 +315,18 @@ class SeriesDetailsController extends GetxController {
                 : 100.0);
 
         videoPlayerController!.addListener(_videoListener);
-        currentVideoSeconds.value = 0.0;
+        final resumePos = (savedProgress.value != null &&
+                savedProgress.value!.seasonNumber == episode.seasonNumber &&
+                savedProgress.value!.episodeNumber == episode.episodeNumber &&
+                savedProgress.value!.positionSeconds > 0)
+            ? savedProgress.value!.positionSeconds
+            : 0.0;
+        if (resumePos > 0) {
+          await videoPlayerController!.seekTo(Duration(seconds: resumePos.toInt()));
+          currentVideoSeconds.value = resumePos;
+        } else {
+          currentVideoSeconds.value = 0.0;
+        }
 
         if (isMuted.value) {
           await videoPlayerController!.setVolume(0.0);
@@ -262,6 +337,8 @@ class SeriesDetailsController extends GetxController {
 
         await videoPlayerController!.play();
         isVideoPlaying.value = true;
+        _startEpisodeHeartbeat();
+        _syncEpisodeProgress(action: 'START');
 
         if (chosenOption != null) {
           currentQualityOption.value = chosenOption;
@@ -506,6 +583,10 @@ class SeriesDetailsController extends GetxController {
   @override
   void onClose() {
     _controlsTimer?.cancel();
+    _heartbeatTimer?.cancel();
+    if (isVideoPlaying.value || currentVideoSeconds.value > 0) {
+      _syncEpisodeProgress(action: 'EXIT');
+    }
     if (videoPlayerController != null) {
       videoPlayerController!.removeListener(_videoListener);
       videoPlayerController!.dispose();

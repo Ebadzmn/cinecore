@@ -4,6 +4,7 @@ import '../../controllers/home_controller.dart';
 import '../../core/utils/navigation_utils.dart';
 import '../../data/models/movie_model.dart';
 import '../screen/genre_movies_screen.dart';
+import 'watch_progress_bar.dart';
 
 class PopularSeriesRowSection extends StatelessWidget {
   final ValueChanged<MovieModel>? onSeriesTap;
@@ -312,6 +313,19 @@ class PopularSeriesRowSection extends StatelessWidget {
                             letterSpacing: 0.4,
                           ),
                         ),
+                      ),
+                    ),
+
+                    // Series Progress Bar pinned to bottom
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: WatchProgressBar(
+                        movieId: series.id,
+                        explicitProgress: series.watchProgress,
+                        height: 3.5,
+                        borderRadius: BorderRadius.zero,
                       ),
                     ),
                   ],

@@ -1,13 +1,32 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import '../data/models/video_quality_option.dart';
 import '../data/services/hls_playlist_service.dart';
+import '../data/services/playback_service.dart';
+import 'playback_progress_controller.dart';
 
 class MoviePlayerController extends GetxController {
   final String? streamUrl;
+  final String? movieId;
+  final String movieType; // 'MOVIE' | 'SERIES'
+  final int? seasonNumber;
+  final int? episodeNumber;
+  final String? episodeTitle;
+  final double initialPositionSeconds;
 
-  MoviePlayerController({this.streamUrl});
+  MoviePlayerController({
+    this.streamUrl,
+    this.movieId,
+    this.movieType = 'MOVIE',
+    this.seasonNumber,
+    this.episodeNumber,
+    this.episodeTitle,
+    this.initialPositionSeconds = 0.0,
+  });
+
+  final PlaybackService _playbackService = PlaybackService();
 
   VideoPlayerController? videoPlayerController;
   final RxBool isInitialized = false.obs;
@@ -18,7 +37,7 @@ class MoviePlayerController extends GetxController {
   final RxBool showControls = true.obs;
 
   final RxDouble currentSeconds = 0.0.obs;
-  final RxDouble totalSeconds = 100.0.obs;
+  final RxDouble totalSeconds = 7200.0.obs;
   final RxDouble playbackSpeed = 1.0.obs;
 
   final RxBool isQualityChanging = false.obs;
@@ -31,12 +50,63 @@ class MoviePlayerController extends GetxController {
 
   Timer? _controlsTimer;
   Timer? _fallbackTicker;
+  Timer? _heartbeatTimer;
+  bool _hasCompleted = false;
 
   @override
   void onInit() {
     super.onInit();
+    if (initialPositionSeconds > 0) {
+      currentSeconds.value = initialPositionSeconds;
+    }
     _initializePlayer();
     startControlsTimer();
+    _startHeartbeat();
+  }
+
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (isPlaying.value && currentSeconds.value > 0) {
+        _syncProgress(action: 'HEARTBEAT');
+      }
+    });
+  }
+
+  Future<void> _syncProgress({String action = 'HEARTBEAT'}) async {
+    final effectiveMovieId = movieId;
+    if (effectiveMovieId == null || effectiveMovieId.isEmpty) return;
+
+    final pos = currentSeconds.value;
+    final dur = totalSeconds.value > 0
+        ? totalSeconds.value
+        : (movieType == 'SERIES' ? 2700.0 : 7200.0);
+
+    // Real-time local reactive store update for all cards across app
+    PlaybackProgressController.to.updateProgress(
+      movieId: effectiveMovieId,
+      movieType: movieType,
+      positionSeconds: pos,
+      durationSeconds: dur,
+      seasonNumber: seasonNumber,
+      episodeNumber: episodeNumber,
+      episodeTitle: episodeTitle,
+      status: action == 'COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS',
+    );
+
+    try {
+      await _playbackService.recordProgress(
+        movieId: effectiveMovieId,
+        positionSeconds: pos,
+        durationSeconds: dur,
+        seasonNumber: seasonNumber,
+        episodeNumber: episodeNumber,
+        episodeTitle: episodeTitle,
+        action: action,
+      );
+    } catch (e) {
+      debugPrint('⚠️ [MoviePlayerController] Progress sync error: $e');
+    }
   }
 
   Future<void> fetchAvailableQualities(String masterUrl) async {
@@ -86,12 +156,18 @@ class MoviePlayerController extends GetxController {
         isInitialized.value = true;
         hasError.value = false;
         final dur = videoPlayerController!.value.duration.inSeconds.toDouble();
-        totalSeconds.value = dur > 0 ? dur : 100.0;
+        totalSeconds.value = dur > 0 ? dur : (movieType == 'SERIES' ? 2700.0 : 7200.0);
 
         videoPlayerController!.addListener(_videoListener);
 
-        if (currentSeconds.value > 0) {
-          await videoPlayerController!.seekTo(Duration(seconds: currentSeconds.value.toInt()));
+        // Resume playback from initial position if available
+        final seekPos = initialPositionSeconds > 0
+            ? initialPositionSeconds
+            : currentSeconds.value;
+
+        if (seekPos > 0) {
+          await videoPlayerController!.seekTo(Duration(seconds: seekPos.toInt()));
+          currentSeconds.value = seekPos;
         }
         if (playbackSpeed.value != 1.0) {
           await videoPlayerController!.setPlaybackSpeed(playbackSpeed.value);
@@ -99,6 +175,8 @@ class MoviePlayerController extends GetxController {
 
         await videoPlayerController!.play();
         isPlaying.value = true;
+        _syncProgress(action: 'START');
+
         if (chosenOption != null) {
           currentQualityOption.value = chosenOption;
           selectedQuality.value = chosenOption.id;
@@ -191,6 +269,16 @@ class MoviePlayerController extends GetxController {
       totalSeconds.value = val.duration.inSeconds.toDouble();
     }
     currentSeconds.value = val.position.inSeconds.toDouble();
+
+    // Check completion (90% threshold or within 5s of end)
+    if (!_hasCompleted && totalSeconds.value > 10) {
+      final pos = currentSeconds.value;
+      final dur = totalSeconds.value;
+      if (pos >= dur - 5 || (pos / dur) >= 0.90) {
+        _hasCompleted = true;
+        _syncProgress(action: 'COMPLETED');
+      }
+    }
   }
 
   void _startFallbackSimulation() {
@@ -202,6 +290,10 @@ class MoviePlayerController extends GetxController {
           currentSeconds.value += playbackSpeed.value;
         } else {
           isPlaying.value = false;
+          if (!_hasCompleted) {
+            _hasCompleted = true;
+            _syncProgress(action: 'COMPLETED');
+          }
         }
       }
     });
@@ -229,17 +321,21 @@ class MoviePlayerController extends GetxController {
         videoPlayerController!.pause();
         isPlaying.value = false;
         _controlsTimer?.cancel();
+        _syncProgress(action: 'PAUSE');
       } else {
         videoPlayerController!.play();
         isPlaying.value = true;
         startControlsTimer();
+        _syncProgress(action: 'START');
       }
     } else {
       isPlaying.value = !isPlaying.value;
       if (isPlaying.value) {
         startControlsTimer();
+        _syncProgress(action: 'START');
       } else {
         _controlsTimer?.cancel();
+        _syncProgress(action: 'PAUSE');
       }
     }
   }
@@ -255,6 +351,7 @@ class MoviePlayerController extends GetxController {
       videoPlayerController!.seekTo(Duration(seconds: seconds.toInt()));
     }
     startControlsTimer();
+    _syncProgress(action: 'HEARTBEAT');
   }
 
   void cycleSpeed() {
@@ -292,6 +389,11 @@ class MoviePlayerController extends GetxController {
   void onClose() {
     _controlsTimer?.cancel();
     _fallbackTicker?.cancel();
+    _heartbeatTimer?.cancel();
+
+    // Flush exit progress before disposal
+    _syncProgress(action: 'EXIT');
+
     if (videoPlayerController != null) {
       videoPlayerController!.removeListener(_videoListener);
       videoPlayerController!.dispose();

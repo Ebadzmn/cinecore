@@ -4,13 +4,17 @@ import 'package:video_player/video_player.dart';
 import '../data/models/cast_member_model.dart';
 import '../data/models/movie_model.dart';
 import '../data/models/video_quality_option.dart';
+import '../data/models/watch_history_model.dart';
 import '../data/services/hls_playlist_service.dart';
 import '../data/services/movie_api_service.dart';
+import '../data/services/playback_service.dart';
+import 'playback_progress_controller.dart';
 
 class MovieDetailsController extends GetxController {
   final String movieId;
   final MovieModel? initialMovie;
   final MovieApiService _apiService = MovieApiService();
+  final PlaybackService _playbackService = PlaybackService();
 
   MovieDetailsController({
     required this.movieId,
@@ -18,6 +22,8 @@ class MovieDetailsController extends GetxController {
   });
 
   final Rx<MovieModel?> movie = Rx<MovieModel?>(null);
+  final Rx<WatchHistoryModel?> savedProgress = Rx<WatchHistoryModel?>(null);
+  final RxBool isCheckingProgress = false.obs;
   final RxString watchUrl = ''.obs;
   String _baseMasterUrl = '';
   final RxBool isSynopsisExpanded = false.obs;
@@ -35,7 +41,7 @@ class MovieDetailsController extends GetxController {
   final RxBool isVideoBuffering = false.obs;
   final RxBool showVideoControls = true.obs;
   final RxDouble currentVideoSeconds = 0.0.obs;
-  final RxDouble totalVideoSeconds = 100.0.obs;
+  final RxDouble totalVideoSeconds = 7200.0.obs;
   final RxDouble videoSpeed = 1.0.obs;
   final RxBool isMuted = false.obs;
   final RxBool videoHasError = false.obs;
@@ -48,6 +54,7 @@ class MovieDetailsController extends GetxController {
   final RxString selectedQuality = 'Auto'.obs;
 
   Timer? _controlsTimer;
+  Timer? _heartbeatTimer;
 
   @override
   void onInit() {
@@ -70,6 +77,85 @@ class MovieDetailsController extends GetxController {
       }
     }
     loadMovieDetails();
+    loadSavedProgress();
+  }
+
+  Future<void> loadSavedProgress() async {
+    try {
+      isCheckingProgress.value = true;
+      final progress = await _playbackService.getProgress(movieId);
+      if (progress != null) {
+        savedProgress.value = progress;
+        PlaybackProgressController.to.updateProgress(
+          movieId: movieId,
+          movieTitle: movie.value?.title,
+          movieType: 'MOVIE',
+          positionSeconds: progress.positionSeconds,
+          durationSeconds: progress.durationSeconds,
+          status: progress.status,
+        );
+      }
+    } catch (_) {
+    } finally {
+      isCheckingProgress.value = false;
+    }
+  }
+
+  static double parseDurationToSeconds(String? durationStr, {double fallback = 7200.0}) {
+    if (durationStr == null || durationStr.trim().isEmpty) return fallback;
+    final clean = durationStr.trim().toLowerCase();
+    final hourMatch = RegExp(r'(\d+)\s*h').firstMatch(clean);
+    final minMatch = RegExp(r'(\d+)\s*m').firstMatch(clean);
+
+    int totalSec = 0;
+    if (hourMatch != null) {
+      totalSec += (int.tryParse(hourMatch.group(1)!) ?? 0) * 3600;
+    }
+    if (minMatch != null) {
+      totalSec += (int.tryParse(minMatch.group(1)!) ?? 0) * 60;
+    }
+
+    if (totalSec > 0) return totalSec.toDouble();
+
+    final numOnly = int.tryParse(clean.replaceAll(RegExp(r'[^0-9]'), ''));
+    if (numOnly != null && numOnly > 0) {
+      return numOnly.toDouble();
+    }
+    return fallback;
+  }
+
+  void _syncInlineProgress({String action = 'HEARTBEAT'}) {
+    final effectiveMovieId = movieId;
+    if (effectiveMovieId.isEmpty) return;
+
+    final parsedDur = parseDurationToSeconds(movie.value?.duration ?? initialMovie?.duration);
+    final dur = totalVideoSeconds.value > 0 ? totalVideoSeconds.value : parsedDur;
+    final pos = currentVideoSeconds.value;
+
+    PlaybackProgressController.to.updateProgress(
+      movieId: effectiveMovieId,
+      movieTitle: movie.value?.title,
+      movieType: 'MOVIE',
+      positionSeconds: pos,
+      durationSeconds: dur,
+      status: action == 'COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS',
+    );
+
+    _playbackService.recordProgress(
+      movieId: effectiveMovieId,
+      positionSeconds: pos,
+      durationSeconds: dur,
+      action: action,
+    );
+  }
+
+  void _startInlineHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (isVideoPlaying.value && currentVideoSeconds.value > 0) {
+        _syncInlineProgress(action: 'HEARTBEAT');
+      }
+    });
   }
 
   void toggleSynopsis() {
@@ -151,7 +237,10 @@ class MovieDetailsController extends GetxController {
 
   // --- Inline Video Player Controls & Dynamic Quality Switching ---
 
-  Future<void> startInlinePlayback({VideoQualityOption? targetQuality}) async {
+  Future<void> startInlinePlayback({
+    VideoQualityOption? targetQuality,
+    double? startPosition,
+  }) async {
     final activeUrl = watchUrl.value.isNotEmpty
         ? watchUrl.value
         : (movie.value?.watchUrl ?? initialMovie?.watchUrl ?? '');
@@ -159,6 +248,11 @@ class MovieDetailsController extends GetxController {
     isVideoActive.value = true;
     showVideoControls.value = true;
     videoHasError.value = false;
+
+    final parsedDur = parseDurationToSeconds(movie.value?.duration ?? initialMovie?.duration);
+    if (parsedDur > 300) {
+      totalVideoSeconds.value = parsedDur;
+    }
 
     if (activeUrl.isNotEmpty) {
       if (availableQualities.isEmpty) {
@@ -184,12 +278,28 @@ class MovieDetailsController extends GetxController {
 
         isVideoInitialized.value = true;
         final dur = videoPlayerController!.value.duration.inSeconds.toDouble();
-        totalVideoSeconds.value = dur > 0 ? dur : 100.0;
+        if (dur > 0) {
+          totalVideoSeconds.value = dur;
+        } else if (totalVideoSeconds.value <= 0) {
+          totalVideoSeconds.value = parsedDur > 0 ? parsedDur : 7200.0;
+        }
 
         videoPlayerController!.addListener(_videoListener);
-        if (currentVideoSeconds.value > 0) {
-          await videoPlayerController!.seekTo(Duration(seconds: currentVideoSeconds.value.toInt()));
+
+        // Resume / Replay position
+        final resumePos = startPosition ??
+            (currentVideoSeconds.value > 0
+                ? currentVideoSeconds.value
+                : (savedProgress.value?.positionSeconds ?? 0.0));
+
+        if (resumePos > 0) {
+          await videoPlayerController!.seekTo(Duration(seconds: resumePos.toInt()));
+          currentVideoSeconds.value = resumePos;
+        } else {
+          await videoPlayerController!.seekTo(Duration.zero);
+          currentVideoSeconds.value = 0.0;
         }
+
         if (isMuted.value) {
           await videoPlayerController!.setVolume(0.0);
         }
@@ -199,6 +309,8 @@ class MovieDetailsController extends GetxController {
 
         await videoPlayerController!.play();
         isVideoPlaying.value = true;
+        _startInlineHeartbeat();
+        _syncInlineProgress(action: (resumePos == 0.0) ? 'START' : 'RESUME');
         if (chosenOption != null) {
           currentQualityOption.value = chosenOption;
           selectedQuality.value = chosenOption.id;
@@ -210,7 +322,7 @@ class MovieDetailsController extends GetxController {
             (o) => o.isAuto,
             orElse: () => availableQualities.first,
           );
-          await startInlinePlayback(targetQuality: autoOpt);
+          await startInlinePlayback(targetQuality: autoOpt, startPosition: startPosition);
           return;
         }
         videoHasError.value = true;
@@ -301,10 +413,12 @@ class MovieDetailsController extends GetxController {
       if (videoPlayerController!.value.isPlaying) {
         videoPlayerController!.pause();
         isVideoPlaying.value = false;
+        _syncInlineProgress(action: 'PAUSE');
         _controlsTimer?.cancel();
       } else {
         videoPlayerController!.play();
         isVideoPlaying.value = true;
+        _syncInlineProgress(action: 'RESUME');
         _startControlsTimer();
       }
     } else {
@@ -337,6 +451,7 @@ class MovieDetailsController extends GetxController {
     currentVideoSeconds.value = seconds.clamp(0.0, totalVideoSeconds.value);
     if (videoPlayerController != null && videoPlayerController!.value.isInitialized) {
       videoPlayerController!.seekTo(Duration(seconds: seconds.toInt()));
+      _syncInlineProgress(action: 'SEEK');
     }
     _startControlsTimer();
   }
@@ -367,6 +482,9 @@ class MovieDetailsController extends GetxController {
   void stopInlinePlayback() {
     if (videoPlayerController != null) {
       videoPlayerController!.pause();
+      if (currentVideoSeconds.value > 0) {
+        _syncInlineProgress(action: 'PAUSE');
+      }
     }
     isVideoActive.value = false;
     _controlsTimer?.cancel();
@@ -390,6 +508,10 @@ class MovieDetailsController extends GetxController {
   @override
   void onClose() {
     _controlsTimer?.cancel();
+    _heartbeatTimer?.cancel();
+    if (isVideoPlaying.value || currentVideoSeconds.value > 0) {
+      _syncInlineProgress(action: 'EXIT');
+    }
     if (videoPlayerController != null) {
       videoPlayerController!.removeListener(_videoListener);
       videoPlayerController!.dispose();

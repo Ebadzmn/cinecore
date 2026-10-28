@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../data/models/movie_model.dart';
+import '../watch_progress_bar.dart';
 
 class MovieRelatedGrid extends StatelessWidget {
   final List<MovieModel> relatedMovies;
@@ -165,6 +166,19 @@ class MovieRelatedGrid extends StatelessWidget {
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
+                                ),
+                              ),
+
+                              // Pinned bottom progress bar
+                              Positioned(
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                child: WatchProgressBar(
+                                  movieId: movie.id,
+                                  explicitProgress: movie.watchProgress,
+                                  height: 3.0,
+                                  borderRadius: BorderRadius.zero,
                                 ),
                               ),
                             ],

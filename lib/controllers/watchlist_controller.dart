@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../data/models/movie_model.dart';
 import '../data/services/movie_api_service.dart';
+import 'playback_progress_controller.dart';
 
 class WatchlistController extends GetxController {
   final MovieApiService _apiService = MovieApiService();
@@ -15,9 +16,9 @@ class WatchlistController extends GetxController {
   final List<String> categories = const [
     'All Saved',
     'In Progress',
-    'Downloaded',
-    '4K Ultra HD',
-    'Action & Sci-Fi',
+    'Completed',
+    'Movies',
+    'Series',
   ];
 
   @override
@@ -31,6 +32,23 @@ class WatchlistController extends GetxController {
       isLoading.value = true;
       final items = await _apiService.getWatchlist();
       watchlist.assignAll(items);
+
+      // Hydrate global PlaybackProgressController with watched items
+      for (final m in items) {
+        if (m.positionSeconds != null && m.durationSeconds != null && m.durationSeconds! > 0) {
+          PlaybackProgressController.to.updateProgress(
+            movieId: m.id,
+            movieTitle: m.title,
+            movieType: m.type,
+            positionSeconds: m.positionSeconds!,
+            durationSeconds: m.durationSeconds!,
+            seasonNumber: m.seasonNumber,
+            episodeNumber: m.episodeNumber,
+            episodeTitle: m.episodeTitle,
+            status: m.status,
+          );
+        }
+      }
     } catch (_) {
     } finally {
       isLoading.value = false;
@@ -60,7 +78,8 @@ class WatchlistController extends GetxController {
         duration: const Duration(seconds: 2),
       );
     } else {
-      watchlist.insert(0, movie);
+      final updatedMovie = movie.copyWith(isBookmarked: true);
+      watchlist.insert(0, updatedMovie);
       _apiService.addToWatchlist(movie.id);
       Get.snackbar(
         'Added to Watchlist',
@@ -86,13 +105,22 @@ class WatchlistController extends GetxController {
     List<MovieModel> list = watchlist.toList();
 
     if (cat == 'In Progress') {
-      list = list.where((m) => (m.watchProgress ?? 0) > 0 && (m.watchProgress ?? 0) < 1.0).toList();
-    } else if (cat == 'Downloaded') {
-      list = list.where((m) => m.isDownloaded).toList();
-    } else if (cat == '4K Ultra HD') {
-      list = list.where((m) => m.resolution.contains('4K') || m.resolution.contains('IMAX') || m.resolution.contains('DOLBY')).toList();
-    } else if (cat == 'Action & Sci-Fi') {
-      list = list.where((m) => m.genres.contains('Action') || m.genres.contains('Sci-Fi')).toList();
+      list = list.where((m) {
+        final progress = m.watchProgress ?? PlaybackProgressController.to.getProgressRatio(m.id);
+        final status = m.status ?? PlaybackProgressController.to.getProgress(m.id)?.status;
+        final isDone = m.isCompleted || status == 'COMPLETED' || progress >= 0.9;
+        return progress > 0 && !isDone;
+      }).toList();
+    } else if (cat == 'Completed') {
+      list = list.where((m) {
+        final progress = m.watchProgress ?? PlaybackProgressController.to.getProgressRatio(m.id);
+        final status = m.status ?? PlaybackProgressController.to.getProgress(m.id)?.status;
+        return m.isCompleted || status == 'COMPLETED' || progress >= 0.9;
+      }).toList();
+    } else if (cat == 'Movies') {
+      list = list.where((m) => !m.isSeries && m.type?.toUpperCase() != 'SERIES').toList();
+    } else if (cat == 'Series') {
+      list = list.where((m) => m.isSeries || m.type?.toUpperCase() == 'SERIES').toList();
     }
 
     if (selectedSortBy.value == 'Rating') {

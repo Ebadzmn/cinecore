@@ -11,7 +11,6 @@ import '../widget/details/movie_metadata_badges.dart';
 import '../widget/details/movie_related_grid.dart';
 import '../widget/details/movie_screenshots_gallery.dart';
 import '../widget/details/movie_synopsis_card.dart';
-import '../widget/details/hero_title_description.dart';
 import '../../core/utils/navigation_utils.dart';
 
 class SeriesDetailsScreen extends StatefulWidget {
@@ -147,8 +146,7 @@ class _SeriesDetailsScreenState extends State<SeriesDetailsScreen> {
                           height: 1.2,
                         ),
                       ),
-                      HeroTitleDescription(text: activeSubtitle),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 14),
 
                       // Metadata Badges (Rating, Seasons count, Year, Resolution, Age)
                       MovieMetadataBadges(
@@ -165,6 +163,160 @@ class _SeriesDetailsScreenState extends State<SeriesDetailsScreen> {
                         _buildGenresChips(currentSeries.genres),
 
                       const SizedBox(height: 18),
+
+                      // Resume Playback Prompt Banner (if progress exists)
+                      Obx(() {
+                        final progress = controller.savedProgress.value;
+                        if (progress == null || progress.positionSeconds <= 0) {
+                          return const SizedBox.shrink();
+                        }
+
+                        final isCompleted = progress.isCompleted;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF161928),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isCompleted
+                                  ? const Color(0xFF10B981).withValues(alpha: 0.35)
+                                  : const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.4),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    isCompleted ? Icons.check_circle_rounded : Icons.history_rounded,
+                                    color: isCompleted ? const Color(0xFF34D399) : const Color(0xFFFBBF24),
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    isCompleted ? 'PREVIOUSLY COMPLETED' : 'CONTINUE WATCHING',
+                                    style: TextStyle(
+                                      color: isCompleted ? const Color(0xFF34D399) : const Color(0xFFFBBF24),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.6,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    isCompleted ? '100%' : '${progress.progressPercentage.toInt()}% Watched',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.6),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          progress.episodeSubtitle,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          isCompleted
+                                              ? 'Completed episode'
+                                              : 'Left off at ${progress.formattedPosition} (${progress.formattedRemainingTime})',
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.6),
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: Container(
+                                            height: 4,
+                                            color: Colors.white.withValues(alpha: 0.12),
+                                            child: Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: FractionallySizedBox(
+                                                widthFactor: progress.progressRatio,
+                                                child: Container(
+                                                  color: isCompleted
+                                                      ? const Color(0xFF10B981)
+                                                      : const Color(0xFFF59E0B),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  ElevatedButton.icon(
+                                    onPressed: () {
+                                      final targetEp = controller.allEpisodes.firstWhereOrNull(
+                                        (e) =>
+                                            e.seasonNumber == progress.seasonNumber &&
+                                            e.episodeNumber == progress.episodeNumber,
+                                      );
+                                      if (targetEp != null) {
+                                        controller.playEpisode(targetEp);
+                                        _scrollToTop();
+                                      } else if (controller.allEpisodes.isNotEmpty) {
+                                        controller.playEpisode(controller.allEpisodes.first);
+                                        _scrollToTop();
+                                      }
+                                    },
+                                    icon: Icon(
+                                      isCompleted ? Icons.replay_rounded : Icons.play_arrow_rounded,
+                                      color: Colors.black,
+                                      size: 16,
+                                    ),
+                                    label: Text(
+                                      isCompleted ? 'Replay' : 'Resume',
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: isCompleted
+                                          ? const Color(0xFF34D399)
+                                          : const Color(0xFFF59E0B),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      minimumSize: Size.zero,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
 
                       // Quick Action Buttons
                       Row(
@@ -1040,6 +1192,11 @@ class _SeriesDetailsScreenState extends State<SeriesDetailsScreen> {
             ? controller.series.value!.backdropUrl!
             : widget.heroImageUrl);
 
+    final isSavedEp = controller.savedProgress.value != null &&
+        controller.savedProgress.value!.seasonNumber == episode.seasonNumber &&
+        controller.savedProgress.value!.episodeNumber == episode.episodeNumber &&
+        controller.savedProgress.value!.positionSeconds > 0;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1058,7 +1215,9 @@ class _SeriesDetailsScreenState extends State<SeriesDetailsScreen> {
             border: Border.all(
               color: isCurrentPlaying
                   ? const Color(0xFFF59E0B)
-                  : const Color(0xFF252837),
+                  : (isSavedEp
+                      ? const Color(0xFFF59E0B).withValues(alpha: 0.3)
+                      : const Color(0xFF252837)),
               width: isCurrentPlaying ? 1.8 : 1.0,
             ),
             boxShadow: isCurrentPlaying
@@ -1138,6 +1297,31 @@ class _SeriesDetailsScreenState extends State<SeriesDetailsScreen> {
                           ),
                         ),
                       ),
+                      // Saved progress bar on thumbnail
+                      if (isSavedEp)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                            child: Container(
+                              height: 3.5,
+                              color: Colors.white24,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: FractionallySizedBox(
+                                  widthFactor: controller.savedProgress.value!.progressRatio,
+                                  child: Container(
+                                    color: controller.savedProgress.value!.isCompleted
+                                        ? const Color(0xFF10B981)
+                                        : const Color(0xFFF59E0B),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -1168,6 +1352,38 @@ class _SeriesDetailsScreenState extends State<SeriesDetailsScreen> {
                             ),
                           ),
                         ),
+                        if (isSavedEp) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: (controller.savedProgress.value!.isCompleted
+                                      ? const Color(0xFF10B981)
+                                      : const Color(0xFFF59E0B))
+                                  .withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: (controller.savedProgress.value!.isCompleted
+                                        ? const Color(0xFF10B981)
+                                        : const Color(0xFFF59E0B))
+                                    .withValues(alpha: 0.35),
+                                width: 0.7,
+                              ),
+                            ),
+                            child: Text(
+                              controller.savedProgress.value!.isCompleted
+                                  ? 'COMPLETED'
+                                  : 'AT ${controller.savedProgress.value!.formattedPosition}',
+                              style: TextStyle(
+                                color: controller.savedProgress.value!.isCompleted
+                                    ? const Color(0xFF34D399)
+                                    : const Color(0xFFFBBF24),
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(width: 6),
                         if (isCurrentPlaying)
                           Container(

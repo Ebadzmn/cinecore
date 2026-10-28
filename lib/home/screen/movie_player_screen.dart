@@ -5,6 +5,12 @@ import 'package:video_player/video_player.dart';
 import '../../controllers/movie_player_controller.dart';
 
 class MoviePlayerScreen extends StatelessWidget {
+  final String? movieId;
+  final String movieType;
+  final int? seasonNumber;
+  final int? episodeNumber;
+  final String? episodeTitle;
+  final double initialPositionSeconds;
   final String title;
   final String subtitle;
   final String heroImageUrl;
@@ -13,6 +19,12 @@ class MoviePlayerScreen extends StatelessWidget {
 
   const MoviePlayerScreen({
     super.key,
+    this.movieId,
+    this.movieType = 'MOVIE',
+    this.seasonNumber,
+    this.episodeNumber,
+    this.episodeTitle,
+    this.initialPositionSeconds = 0.0,
     this.title = 'SCREAM VII',
     this.subtitle = 'The Bloodline Returns',
     this.heroImageUrl =
@@ -23,9 +35,20 @@ class MoviePlayerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveMovieId = movieId ?? (title.isNotEmpty ? title.toLowerCase().replaceAll(' ', '_') : null);
+    final controllerTag = '${effectiveMovieId ?? title}_${watchUrl ?? ''}_${seasonNumber ?? 0}_${episodeNumber ?? 0}';
+
     final controller = Get.put(
-      MoviePlayerController(streamUrl: watchUrl),
-      tag: title + (watchUrl ?? ''),
+      MoviePlayerController(
+        streamUrl: watchUrl,
+        movieId: effectiveMovieId,
+        movieType: movieType,
+        seasonNumber: seasonNumber,
+        episodeNumber: episodeNumber,
+        episodeTitle: episodeTitle,
+        initialPositionSeconds: initialPositionSeconds,
+      ),
+      tag: controllerTag,
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(

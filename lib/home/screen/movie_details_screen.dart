@@ -10,9 +10,9 @@ import '../widget/details/movie_metadata_badges.dart';
 import '../widget/details/movie_related_grid.dart';
 import '../widget/details/movie_screenshots_gallery.dart';
 import '../widget/details/movie_synopsis_card.dart';
-import '../widget/details/hero_title_description.dart';
 import '../../core/utils/navigation_utils.dart';
 import 'series_details_screen.dart';
+
 
 class MovieDetailsScreen extends StatelessWidget {
   final String? movieId;
@@ -77,6 +77,8 @@ class MovieDetailsScreen extends StatelessWidget {
       }
     });
 
+    final ScrollController scrollController = ScrollController();
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(
         statusBarColor: Colors.transparent,
@@ -84,6 +86,7 @@ class MovieDetailsScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: const Color(0xFF090A0E),
         body: CustomScrollView(
+          controller: scrollController,
           physics: const BouncingScrollPhysics(),
           slivers: [
             // 1. Top Horizontal Section: Inline Video Player or Hero Backdrop
@@ -129,8 +132,7 @@ class MovieDetailsScreen extends StatelessWidget {
                           height: 1.2,
                         ),
                       ),
-                      HeroTitleDescription(text: activeSubtitle),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 14),
 
                       // Badges (Rating, Year, Duration, Resolution, Age)
                       MovieMetadataBadges(
@@ -223,13 +225,161 @@ class MovieDetailsScreen extends StatelessWidget {
 
                       const SizedBox(height: 20),
 
+                      // Resume Playback Prompt Banner (if progress exists)
+                      Obx(() {
+                        final progress = detailsController.savedProgress.value;
+                        if (progress == null || progress.positionSeconds <= 0) {
+                          return const SizedBox.shrink();
+                        }
+
+                        final isCompleted = progress.isCompleted;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF161928),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isCompleted
+                                  ? const Color(0xFF10B981).withValues(alpha: 0.35)
+                                  : const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.4),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    isCompleted ? Icons.check_circle_rounded : Icons.history_rounded,
+                                    color: isCompleted ? const Color(0xFF34D399) : const Color(0xFFFBBF24),
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    isCompleted ? 'PREVIOUSLY COMPLETED' : 'CONTINUE WATCHING',
+                                    style: TextStyle(
+                                      color: isCompleted ? const Color(0xFF34D399) : const Color(0xFFFBBF24),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.6,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    isCompleted ? '100%' : '${progress.progressPercentage.toInt()}% Watched',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.6),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          isCompleted
+                                              ? 'You have finished watching this movie'
+                                              : 'Left off at ${progress.formattedPosition} (${progress.formattedRemainingTime})',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: Container(
+                                            height: 4,
+                                            color: Colors.white.withValues(alpha: 0.12),
+                                            child: Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: FractionallySizedBox(
+                                                widthFactor: progress.progressRatio,
+                                                child: Container(
+                                                  color: const Color(0xFFE50914),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  ElevatedButton.icon(
+                                    onPressed: () {
+                                      final startPos = isCompleted ? 0.0 : progress.positionSeconds;
+                                      detailsController.startInlinePlayback(startPosition: startPos);
+                                      if (scrollController.hasClients) {
+                                        scrollController.animateTo(
+                                          0.0,
+                                          duration: const Duration(milliseconds: 300),
+                                          curve: Curves.easeOut,
+                                        );
+                                      }
+                                    },
+                                    icon: Icon(
+                                      isCompleted ? Icons.replay_rounded : Icons.play_arrow_rounded,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                    label: Text(
+                                      isCompleted ? 'Replay' : 'Resume',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFE50914),
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      minimumSize: Size.zero,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+
                       // Primary Action Buttons (Watch Now inline + Add to Watchlist)
                       Row(
                         children: [
                           Expanded(
                             flex: 3,
                             child: ElevatedButton.icon(
-                              onPressed: () => detailsController.startInlinePlayback(),
+                              onPressed: () {
+                                detailsController.startInlinePlayback();
+                                if (scrollController.hasClients) {
+                                  scrollController.animateTo(
+                                    0.0,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeOut,
+                                  );
+                                }
+                              },
                               icon: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 24),
                               label: Text(
                                 detailsController.isVideoActive.value ? 'PLAYING AT TOP' : 'WATCH NOW',

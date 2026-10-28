@@ -5,6 +5,7 @@ import '../data/models/genre_model.dart';
 import '../data/models/home_feed_model.dart';
 import '../data/models/movie_model.dart';
 import '../data/services/movie_api_service.dart';
+import 'playback_progress_controller.dart';
 
 class HomeController extends GetxController {
   final MovieApiService _apiService = MovieApiService();
@@ -44,12 +45,14 @@ class HomeController extends GetxController {
       final categoriesFuture = _apiService.getCategories();
       final genresFuture = _apiService.getGenres();
       final continueFuture = _apiService.getContinueWatching();
+      final summaryFuture = PlaybackProgressController.to.fetchProgressSummary();
 
       final results = await Future.wait([
         homeFeedFuture,
         categoriesFuture,
         genresFuture,
         continueFuture,
+        summaryFuture,
       ]);
 
       final feed = results[0] as HomeFeedModel?;

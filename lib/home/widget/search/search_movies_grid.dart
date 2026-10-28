@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../data/models/movie_model.dart';
+import '../watch_progress_bar.dart';
 
 class SearchMoviesGrid extends StatelessWidget {
   final List<MovieModel> movies;
@@ -229,6 +230,19 @@ class SearchMoviesGrid extends StatelessWidget {
                         ),
                       ),
                     ),
+
+                  // Pinned bottom progress bar on the search grid card
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: WatchProgressBar(
+                      movieId: movie.id,
+                      explicitProgress: movie.watchProgress,
+                      height: 3.5,
+                      borderRadius: BorderRadius.zero,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -338,6 +352,19 @@ class SearchMoviesGrid extends StatelessWidget {
                             child: const Icon(Icons.push_pin_rounded, color: Colors.black, size: 9),
                           ),
                         ),
+
+                      // Pinned bottom progress bar on the list item poster
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: WatchProgressBar(
+                          movieId: movie.id,
+                          explicitProgress: movie.watchProgress,
+                          height: 3.0,
+                          borderRadius: BorderRadius.zero,
+                        ),
+                      ),
                     ],
                   ),
                 ),

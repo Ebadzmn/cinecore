@@ -26,6 +26,15 @@ class MovieModel {
   final String? rankTag;
   final double? watchProgress;
   final String? remainingTime;
+  final double? positionSeconds;
+  final double? durationSeconds;
+  final String? status;
+  final bool isCompleted;
+  final bool isBookmarked;
+  final int? seasonNumber;
+  final int? episodeNumber;
+  final String? episodeTitle;
+  final DateTime? lastWatchedAt;
   final bool isDownloaded;
   final bool isPinned;
 
@@ -74,6 +83,15 @@ class MovieModel {
     this.rankTag,
     this.watchProgress,
     this.remainingTime,
+    this.positionSeconds,
+    this.durationSeconds,
+    this.status,
+    this.isCompleted = false,
+    this.isBookmarked = false,
+    this.seasonNumber,
+    this.episodeNumber,
+    this.episodeTitle,
+    this.lastWatchedAt,
     this.isDownloaded = false,
     this.isPinned = false,
     this.watchUrl,
@@ -116,6 +134,15 @@ class MovieModel {
     String? rankTag,
     double? watchProgress,
     String? remainingTime,
+    double? positionSeconds,
+    double? durationSeconds,
+    String? status,
+    bool? isCompleted,
+    bool? isBookmarked,
+    int? seasonNumber,
+    int? episodeNumber,
+    String? episodeTitle,
+    DateTime? lastWatchedAt,
     bool? isDownloaded,
     bool? isPinned,
     String? watchUrl,
@@ -157,6 +184,15 @@ class MovieModel {
       rankTag: rankTag ?? this.rankTag,
       watchProgress: watchProgress ?? this.watchProgress,
       remainingTime: remainingTime ?? this.remainingTime,
+      positionSeconds: positionSeconds ?? this.positionSeconds,
+      durationSeconds: durationSeconds ?? this.durationSeconds,
+      status: status ?? this.status,
+      isCompleted: isCompleted ?? this.isCompleted,
+      isBookmarked: isBookmarked ?? this.isBookmarked,
+      seasonNumber: seasonNumber ?? this.seasonNumber,
+      episodeNumber: episodeNumber ?? this.episodeNumber,
+      episodeTitle: episodeTitle ?? this.episodeTitle,
+      lastWatchedAt: lastWatchedAt ?? this.lastWatchedAt,
       isDownloaded: isDownloaded ?? this.isDownloaded,
       isPinned: isPinned ?? this.isPinned,
       watchUrl: watchUrl ?? this.watchUrl,
@@ -180,14 +216,17 @@ class MovieModel {
     String formattedDuration = '2h 00m';
     if (json['duration'] is num) {
       final num d = json['duration'] as num;
-      if (d > 300) {
-        // value in seconds
+      if (d >= 3600) {
         final int totalMins = (d / 60).round();
         final int h = totalMins ~/ 60;
         final int m = totalMins % 60;
         formattedDuration = h > 0 ? '${h}h ${m}m' : '${m}m';
+      } else if (d >= 60) {
+        final int m = d ~/ 60;
+        final int s = (d % 60).toInt();
+        formattedDuration = s > 0 ? '${m}m ${s}s' : '${m}m';
       } else if (d > 0) {
-        formattedDuration = '${d}m';
+        formattedDuration = '${d.toInt()}s';
       }
     } else if (json['duration'] != null && json['duration'].toString().isNotEmpty) {
       formattedDuration = json['duration'].toString();
@@ -310,6 +349,19 @@ class MovieModel {
       rankTag: json['rankTag']?.toString(),
       watchProgress: (json['watchProgress'] is num) ? (json['watchProgress'] as num).toDouble() : null,
       remainingTime: json['remainingTime']?.toString(),
+      positionSeconds: (json['positionSeconds'] is num) ? (json['positionSeconds'] as num).toDouble() : null,
+      durationSeconds: (json['durationSeconds'] is num) ? (json['durationSeconds'] as num).toDouble() : null,
+      status: json['status']?.toString(),
+      isCompleted: json['isCompleted'] == true ||
+          json['status'] == 'COMPLETED' ||
+          ((json['watchProgress'] as num?)?.toDouble() ?? 0.0) >= 0.90,
+      isBookmarked: json['isBookmarked'] == true,
+      seasonNumber: (json['seasonNumber'] is num) ? (json['seasonNumber'] as num).toInt() : null,
+      episodeNumber: (json['episodeNumber'] is num) ? (json['episodeNumber'] as num).toInt() : null,
+      episodeTitle: json['episodeTitle']?.toString(),
+      lastWatchedAt: json['lastWatchedAt'] != null
+          ? DateTime.tryParse(json['lastWatchedAt'].toString())
+          : null,
       isDownloaded: json['isDownloaded'] == true,
       isPinned: json['isPinned'] == true,
       watchUrl: resolvedWatchUrl,

@@ -1,3 +1,4 @@
+import 'watch_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../data/models/genre_model.dart';
@@ -356,9 +357,11 @@ class _GenreMovieRowSectionState extends State<GenreMovieRowSection> {
                               onTap: () {
                                 Get.to(
                                   () => MoviePlayerScreen(
+                                    movieId: movie.id,
                                     title: movie.title,
                                     subtitle: movie.subtitle ?? movie.genres,
                                     heroImageUrl: movie.imageUrl,
+                                    watchUrl: movie.watchUrl ?? movie.playbackUrl,
                                   ),
                                 );
                               },
@@ -387,6 +390,18 @@ class _GenreMovieRowSectionState extends State<GenreMovieRowSection> {
                         ),
                       ),
 
+                      // Pinned bottom progress bar
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: WatchProgressBar(
+                          movieId: movie.id,
+                          explicitProgress: movie.watchProgress,
+                          height: 3.5,
+                          borderRadius: BorderRadius.zero,
+                        ),
+                      ),
                       // Border overlay
                       Positioned.fill(
                         child: IgnorePointer(

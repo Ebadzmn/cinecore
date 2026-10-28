@@ -21,6 +21,7 @@ import 'leaderboard_screen.dart';
 import 'movie_player_screen.dart';
 import 'search_screen.dart';
 import 'watchlist_screen.dart';
+import 'watch_history_screen.dart';
 import '../../core/utils/navigation_utils.dart';
 import '../../welcome/screen/welcome_screen.dart';
 import '../../auth/screen/get_started_screen.dart';
@@ -185,11 +186,23 @@ class HomeScreen extends StatelessWidget {
             // 6. Continue Watching Section
             SliverToBoxAdapter(
               child: ContinueWatchingSection(
-                onItemTap: (item) => _navigateToPlayer(
-                  title: item.title,
-                  subtitle: item.episodeInfo,
-                  heroImageUrl: item.imageUrl,
-                ),
+                onItemTap: (item) {
+                  Get.to(
+                    () => MoviePlayerScreen(
+                      movieId: item.movieId ?? item.id,
+                      movieType: item.movieType ?? 'MOVIE',
+                      seasonNumber: item.seasonNumber,
+                      episodeNumber: item.episodeNumber,
+                      episodeTitle: item.episodeTitle,
+                      initialPositionSeconds: item.positionSeconds,
+                      title: item.title,
+                      subtitle: item.episodeInfo,
+                      heroImageUrl: item.imageUrl,
+                    ),
+                    transition: Transition.fadeIn,
+                  );
+                },
+                onSeeAll: () => Get.to(() => const WatchHistoryScreen()),
               ),
             ),
 
@@ -377,6 +390,7 @@ class HomeScreen extends StatelessWidget {
         );
       } else {
         _navigateToPlayer(
+          movieId: banner.movie!.id,
           title: banner.title,
           subtitle: banner.subtitle,
           heroImageUrl: banner.displayImageUrl,
@@ -385,6 +399,7 @@ class HomeScreen extends StatelessWidget {
       }
     } else {
       _navigateToPlayer(
+        movieId: item.id,
         title: item.fullTitle,
         subtitle: item.subtitle,
         heroImageUrl: item.imageUrl,
@@ -409,17 +424,21 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _navigateToPlayer({
+    String? movieId,
     required String title,
     required String subtitle,
     required String heroImageUrl,
     String? watchUrl,
+    double initialPositionSeconds = 0.0,
   }) {
     Get.to(
       () => MoviePlayerScreen(
+        movieId: movieId,
         title: title,
         subtitle: subtitle,
         heroImageUrl: heroImageUrl,
         watchUrl: watchUrl,
+        initialPositionSeconds: initialPositionSeconds,
       ),
       transition: Transition.fadeIn,
     );
@@ -623,6 +642,69 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
               ],
+              // Watch History Entry Point
+              GestureDetector(
+                onTap: () => Get.to(() => const WatchHistoryScreen()),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161822),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.history_rounded,
+                          color: Color(0xFFFBBF24),
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Watch History & Resume',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'View completed and in-progress movies & series',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.5),
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: Colors.white38,
+                        size: 14,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
               GestureDetector(
                 onTap: () async {
                   await authController.logout();

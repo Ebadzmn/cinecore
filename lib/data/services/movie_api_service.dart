@@ -214,7 +214,7 @@ class MovieApiService {
     } catch (_) {
       // Fallback
     }
-    return _defaultContinueWatching;
+    return [];
   }
 
   // 2. Fetch Details, Cast, Related & Gallery
@@ -348,9 +348,16 @@ class MovieApiService {
   }
 
   // 4. Watchlist API
-  Future<List<MovieModel>> getWatchlist() async {
+  Future<List<MovieModel>> getWatchlist({String? category, String? sortBy}) async {
     try {
-      final response = await _apiClient.get(ApiConstants.watchlist);
+      final queryParams = <String, dynamic>{};
+      if (category != null && category.isNotEmpty) queryParams['category'] = category;
+      if (sortBy != null && sortBy.isNotEmpty) queryParams['sortBy'] = sortBy;
+
+      final response = await _apiClient.get(
+        ApiConstants.watchlist,
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
       if (response.data != null && response.data['data'] is List) {
         return (response.data['data'] as List)
             .map((item) => MovieModel.fromJson(item as Map<String, dynamic>))
@@ -683,7 +690,7 @@ class MovieApiService {
     ),
   ];
 
-  static final List<ContinueWatchingModel> _defaultContinueWatching = [
+  static final List<ContinueWatchingModel> defaultContinueWatching = [
     const ContinueWatchingModel(
       id: 'cw_1',
       title: 'SCREAM VII',

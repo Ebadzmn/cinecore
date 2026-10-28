@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../model/home_models.dart';
+import 'watch_progress_bar.dart';
 
 class PremiumMovieCard extends StatefulWidget {
   final MovieModel movie;
@@ -277,7 +278,7 @@ class _PremiumMovieCardState extends State<PremiumMovieCard> {
                                 ),
                               ),
                               child: Text(
-                                movie.resolution ?? '4K HDR',
+                                movie.resolution.isNotEmpty ? movie.resolution : '4K HDR',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 8.5,
@@ -332,6 +333,19 @@ class _PremiumMovieCardState extends State<PremiumMovieCard> {
                           ),
                         ),
                       ),
+
+                      // 6. Streaming Progress Bar pinned to bottom of poster
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: WatchProgressBar(
+                          movieId: movie.id,
+                          explicitProgress: movie.watchProgress,
+                          height: 3.5,
+                          borderRadius: BorderRadius.zero,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -360,7 +374,7 @@ class _PremiumMovieCardState extends State<PremiumMovieCard> {
                   Expanded(
                     child: Text(
                       movie.subtitle ??
-                          '${movie.releaseYear ?? '2024'} • ${movie.genres ?? 'Cinema'}',
+                          '${movie.releaseYear ?? '2024'} • ${movie.genres}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

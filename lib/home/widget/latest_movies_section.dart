@@ -1,3 +1,4 @@
+import 'watch_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/home_controller.dart';
@@ -352,6 +353,18 @@ class LatestMoviesSection extends StatelessWidget {
                           ),
                         ),
                       ),
+                    // Pinned bottom progress bar on the movie poster
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: WatchProgressBar(
+                        movieId: movie.id,
+                        explicitProgress: movie.watchProgress,
+                        height: 3.5,
+                        borderRadius: BorderRadius.zero,
+                      ),
+                    ),
                   ],
                 ),
               ),

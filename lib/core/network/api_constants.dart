@@ -111,6 +111,9 @@ class ApiConstants {
   static const String trendingKeywords = '/search/trending-keywords';
   static const String watchlist = '/watchlist';
   static const String continueWatching = '/playback/continue-watching';
+  static const String playbackProgress = '/playback/progress';
   static const String playbackHeartbeat = '/playback/heartbeat';
+  static const String playbackSummary = '/playback/summary';
+  static const String watchHistory = '/playback/history';
   static const String leaderboard = '/leaderboard';
 }

@@ -1,3 +1,4 @@
+import 'watch_progress_bar.dart';
 import 'package:flutter/material.dart';
 
 class TopBlockbusterMovie {
@@ -456,6 +457,17 @@ class TopBlockbustersSection extends StatelessWidget {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    // Pinned bottom progress bar on blockbuster poster
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: WatchProgressBar(
+                        movieId: item.id,
+                        height: 3.5,
+                        borderRadius: BorderRadius.zero,
                       ),
                     ),
                   ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../controllers/watchlist_controller.dart';
+import '../../controllers/playback_progress_controller.dart';
 import '../../data/models/movie_model.dart';
 import '../widget/watchlist/watchlist_empty_view.dart';
 import '../widget/watchlist/watchlist_item_card.dart';
@@ -29,9 +30,22 @@ class WatchlistScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF090A0E),
         body: SafeArea(
           bottom: false,
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
+          child: RefreshIndicator(
+            color: const Color(0xFFF59E0B),
+            backgroundColor: const Color(0xFF161822),
+            displacement: 20,
+            edgeOffset: 10,
+            onRefresh: () async {
+              await Future.wait([
+                controller.fetchWatchlist(),
+                PlaybackProgressController.to.fetchProgressSummary(),
+              ]);
+            },
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              slivers: [
               const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
               // 1. Header & Stats
@@ -137,6 +151,18 @@ class WatchlistScreen extends StatelessWidget {
               // 3. Watchlist Items or Empty State
               SliverToBoxAdapter(
                 child: Obx(() {
+                  if (controller.isLoading.value && controller.watchlist.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 50),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFF59E0B),
+                          strokeWidth: 2.5,
+                        ),
+                      ),
+                    );
+                  }
+
                   final items = controller.filteredWatchlist;
 
                   if (items.isEmpty) {
@@ -164,6 +190,7 @@ class WatchlistScreen extends StatelessWidget {
               const SliverToBoxAdapter(child: SizedBox(height: 95)),
             ],
           ),
+          ),
         ),
       ),
     );
@@ -174,11 +201,22 @@ class WatchlistScreen extends StatelessWidget {
   }
 
   void _navigateToPlayer(MovieModel movie) {
+    final cached = PlaybackProgressController.to.getProgress(movie.id);
+    final isDone = movie.isCompleted || (cached?.isCompleted ?? false);
+    final resumePos = isDone ? 0.0 : (movie.positionSeconds ?? cached?.positionSeconds ?? 0.0);
+
     Get.to(
       () => MoviePlayerScreen(
+        movieId: movie.id,
+        movieType: movie.isSeries ? 'SERIES' : 'MOVIE',
         title: movie.title,
         subtitle: movie.subtitle ?? movie.duration,
         heroImageUrl: movie.imageUrl,
+        watchUrl: movie.watchUrl ?? movie.playbackUrl,
+        seasonNumber: movie.seasonNumber ?? cached?.seasonNumber,
+        episodeNumber: movie.episodeNumber ?? cached?.episodeNumber,
+        episodeTitle: movie.episodeTitle ?? cached?.episodeTitle,
+        initialPositionSeconds: resumePos,
       ),
       transition: Transition.fadeIn,
     );
