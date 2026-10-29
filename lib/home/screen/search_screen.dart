@@ -26,6 +26,7 @@ class SearchScreen extends StatelessWidget {
         systemNavigationBarColor: const Color(0xFF090A0E),
       ),
       child: Scaffold(
+        resizeToAvoidBottomInset: true,
         backgroundColor: const Color(0xFF090A0E),
         body: SafeArea(
           bottom: false,
@@ -34,6 +35,7 @@ class SearchScreen extends StatelessWidget {
             backgroundColor: const Color(0xFF161822),
             onRefresh: () => controller.performSearch(),
             child: CustomScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
               slivers: [
                 const SliverToBoxAdapter(child: SizedBox(height: 12)),
@@ -99,31 +101,39 @@ class SearchScreen extends StatelessWidget {
                       () => Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 3,
-                                height: 14,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF59E0B),
-                                  borderRadius: BorderRadius.circular(2),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 3,
+                                  height: 14,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF59E0B),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                controller.searchQuery.value.isEmpty
-                                    ? 'EXPLORE CATALOG'
-                                    : 'RESULTS FOR "${controller.searchQuery.value.toUpperCase()}"',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    controller.searchQuery.value.isEmpty
+                                        ? 'EXPLORE CATALOG'
+                                        : 'RESULTS FOR "${controller.searchQuery.value.toUpperCase()}"',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.5,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 10),
                           Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               if (controller.isLoading.value) ...[
                                 const SizedBox(
@@ -230,9 +240,13 @@ class SearchScreen extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          term,
-                          style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+                        Flexible(
+                          child: Text(
+                            term,
+                            style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         const SizedBox(width: 6),
                         GestureDetector(
@@ -305,12 +319,16 @@ class SearchScreen extends StatelessWidget {
                       children: [
                         const Icon(Icons.trending_up_rounded, color: Color(0xFFF59E0B), size: 13),
                         const SizedBox(width: 5),
-                        Text(
-                          keyword,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
+                        Flexible(
+                          child: Text(
+                            keyword,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],

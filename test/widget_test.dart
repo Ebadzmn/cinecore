@@ -37,8 +37,11 @@ void main() {
     expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
 
     // Explicitly delete controller with tag to cancel active periodic tickers
-    final controller = Get.find<MoviePlayerController>(tag: 'SCREAM VII');
-    controller.onClose();
-    Get.delete<MoviePlayerController>(tag: 'SCREAM VII', force: true);
+    final controllerTag = 'scream_vii__0_0';
+    if (Get.isRegistered<MoviePlayerController>(tag: controllerTag)) {
+      Get.delete<MoviePlayerController>(tag: controllerTag, force: true);
+    }
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 2));
   });
 }

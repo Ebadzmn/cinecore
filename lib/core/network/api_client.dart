@@ -33,6 +33,15 @@ class ApiClient {
     return _caller.postRaw(path, data: data, queryParameters: queryParameters, options: options);
   }
 
+  Future<Response> put(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) async {
+    return _caller.putRaw(path, data: data, queryParameters: queryParameters, options: options);
+  }
+
   Future<Response> patch(
     String path, {
     dynamic data,

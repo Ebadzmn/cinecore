@@ -161,6 +161,19 @@ class NetworkCaller {
     }
   }
 
+  Future<Response> putRaw(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) async {
+    try {
+      return await _dio.put(path, data: data, queryParameters: queryParameters, options: options);
+    } on DioException catch (e) {
+      throw handleDioError(e);
+    }
+  }
+
   Future<Response> patchRaw(
     String path, {
     dynamic data,

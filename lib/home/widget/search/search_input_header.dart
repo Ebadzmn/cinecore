@@ -60,6 +60,8 @@ class SearchInputHeader extends StatelessWidget {
                 controller: controller,
                 focusNode: focusNode,
                 onChanged: onChanged,
+                textInputAction: TextInputAction.search,
+                keyboardType: TextInputType.text,
                 style: const TextStyle(color: Colors.white, fontSize: 14),
                 cursorColor: const Color(0xFFF59E0B),
                 decoration: InputDecoration(

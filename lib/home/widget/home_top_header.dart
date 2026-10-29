@@ -12,26 +12,25 @@ class HomeTopHeader extends StatelessWidget {
           // Row 1: Brand Logo + "Home" Title + Bell Icon + Profile Avatar
           Row(
             children: [
-              // CineCore Amber Play Icon
+              // CineCore Brand 3D Logo
               Container(
                 width: 38,
                 height: 38,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFFFBBF24),
-                      Color(0xFFF97316),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFEF4444).withValues(alpha: 0.35),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: const Center(
-                  child: Icon(
-                    Icons.play_arrow_rounded,
-                    color: Color(0xFF0C0D11),
-                    size: 24,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),

@@ -36,11 +36,13 @@ class SearchFilterChips extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 1. Top Row: Media Type Filter Tabs (All / Movies / Series) + Grid/List View Toggle
-        Padding(
+        // 1. Top Row: Media Type Filter Tabs (All / Movies / Series) + Grid/List View Toggle (Responsive Horizontal Scroll to prevent any overflow)
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisSize: MainAxisSize.min,
             children: [
               // Media Type Capsule Bar
               Container(
@@ -103,8 +105,11 @@ class SearchFilterChips extends StatelessWidget {
                 ),
               ),
 
+              const SizedBox(width: 12),
+
               // Right side: Sort Menu & View Mode Toggle
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   // Sort Popup Menu
                   PopupMenuButton<String>(

@@ -93,10 +93,11 @@ class CustomGlassBottomNavBar extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   children: [
                     // 1. Sliding Elegant Frosted Pill Indicator (Clean & Minimal)
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 260),
-                      curve: Curves.easeInOutCubic,
-                      left: currentIndex * itemWidth + (itemWidth - pillWidth) / 2,
+                    if (currentIndex >= 0 && currentIndex < items.length)
+                      AnimatedPositioned(
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeInOutCubic,
+                        left: currentIndex * itemWidth + (itemWidth - pillWidth) / 2,
                       top: 9,
                       width: pillWidth,
                       height: pillHeight,

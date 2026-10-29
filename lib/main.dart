@@ -3,9 +3,8 @@ import 'package:get/get.dart';
 import 'controllers/auth_controller.dart';
 import 'core/network/api_constants.dart';
 import 'core/storage/auth_storage.dart';
-import 'home/screen/home_screen.dart';
+import 'splash/screen/splash_screen.dart';
 import 'theme/app_theme.dart';
-import 'welcome/screen/welcome_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,7 +28,6 @@ class CineCoreApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authController = Get.find<AuthController>();
     return GetMaterialApp(
       title: 'CineCore',
       debugShowCheckedModeBanner: false,
@@ -37,14 +35,7 @@ class CineCoreApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.dark,
       defaultTransition: Transition.fadeIn,
-      home: Obx(() {
-        // If user is logged in (token and session active), navigate directly to HomeScreen
-        if (authController.isLoggedIn.value) {
-          return const HomeScreen();
-        }
-        // If not logged in, present Welcome onboarding screen
-        return const WelcomeScreen();
-      }),
+      home: const SplashScreen(),
     );
   }
 }

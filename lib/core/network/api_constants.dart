@@ -87,6 +87,18 @@ class ApiConstants {
     return 'http://127.0.0.1:$port$apiPath';
   }
 
+  /// Resolves an image/asset URL: if relative (e.g. /uploads/...), prepends active server origin
+  static String resolveImageUrl(String? url) {
+    if (url == null || url.trim().isEmpty) return '';
+    final trimmed = url.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    final origin = baseUrl.replaceAll(apiPath, '');
+    final path = trimmed.startsWith('/') ? trimmed : '/$trimmed';
+    return '$origin$path';
+  }
+
   static const int connectTimeout = 10000; // 10 seconds
   static const int receiveTimeout = 10000; // 10 seconds
 
@@ -116,4 +128,13 @@ class ApiConstants {
   static const String playbackSummary = '/playback/summary';
   static const String watchHistory = '/playback/history';
   static const String leaderboard = '/leaderboard';
+
+  // Community Feed Endpoints
+  static const String communityFeed = '/community/feed';
+  static const String communityPosts = '/community/posts';
+  static const String communityUpload = '/community/upload';
+  static const String communityReports = '/community/reports';
+
+  // System & Maintenance Status
+  static const String systemStatus = '/system/status';
 }
